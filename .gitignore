@@ -46,8 +46,4 @@ Thumbs.db
 
 # Project specific
 *.json
-*.mindmap
-*.log
-
-# Pre-commit
-.pre-commit-config.yaml
+!requirements.txt
