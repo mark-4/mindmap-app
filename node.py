@@ -198,6 +198,18 @@ class NodeItem(QGraphicsRectItem):
                 if snapped_pos != self.pos():
                     self.setPos(snapped_pos)
             
+            # 親距離を使わない「縦レーン」割り込み
+            lane_insert, lane_nodes, lane_index = self._view._check_lane_insertion(self, self.pos())
+            if lane_insert:
+                # 現在のレーンにドラッグ中ノードを挿入して等間隔再配置
+                nodes_with_dragged = lane_nodes.copy()
+                nodes_with_dragged.insert(lane_index, self)
+                self._view._reposition_lane_nodes(nodes_with_dragged)
+                if should_end_subtree_drag:
+                    self._view.end_subtree_drag()
+                self._press_pos = None
+                return super().mouseReleaseEvent(event)
+            
             # 衝突検出：単体ノード衝突 または サブツリー衝突
             subtree_collision = False
             if getattr(self._view, '_subtree_drag_mode', False) and self == getattr(self._view, '_subtree_drag_root', None):

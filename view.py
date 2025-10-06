@@ -1581,6 +1581,172 @@ class MindMapView(QGraphicsView):
             print(f"_check_own_vertical_line_overlap エラー: {e}")
             return False
 
+    def _check_insertion_zone(self, dragged_node: 'NodeItem', target_pos: QPointF) -> tuple[bool, 'NodeItem', int]:
+        """挿入ゾーンの検出（親ノードの15px以内）"""
+        try:
+            from node import NodeItem
+            insertion_threshold = 15.0  # 15px以内
+            
+            for item in self.scene.items():
+                if isinstance(item, NodeItem) and item != dragged_node:
+                    # ドラッグ中のノードがこのノードの子かどうかチェック
+                    is_child = False
+                    for connection in self.connections:
+                        if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                            connection.source == item and connection.target == dragged_node):
+                            is_child = True
+                            break
+                    
+                    if is_child:
+                        # 親ノードの位置を取得
+                        parent_rect = item.sceneBoundingRect()
+                        parent_center = parent_rect.center()
+                        
+                        # 距離を計算
+                        distance = ((target_pos.x() - parent_center.x()) ** 2 + 
+                                   (target_pos.y() - parent_center.y()) ** 2) ** 0.5
+                        
+                        if distance <= insertion_threshold:
+                            # 挿入位置を計算（Y座標ベース）
+                            child_nodes = []
+                            for conn in self.connections:
+                                if (hasattr(conn, 'source') and hasattr(conn, 'target') and
+                                    conn.source == item):
+                                    child_nodes.append(conn.target)
+                            
+                            # Y座標でソート
+                            child_nodes.sort(key=lambda n: n.pos().y())
+                            
+                            # 挿入位置を決定
+                            insert_index = 0
+                            for i, child in enumerate(child_nodes):
+                                if child == dragged_node:
+                                    continue
+                                if target_pos.y() < child.pos().y():
+                                    insert_index = i
+                                    break
+                                insert_index = i + 1
+                            
+                            return True, item, insert_index
+            
+            return False, None, 0
+        except Exception as e:
+            print(f"_check_insertion_zone エラー: {e}")
+            return False, None, 0
+
+    def _reorder_child_nodes(self, parent_node: 'NodeItem', dragged_node: 'NodeItem', insert_index: int):
+        """子ノードの順番を変更"""
+        try:
+            # 既存の接続を削除
+            connections_to_remove = []
+            for connection in self.connections:
+                if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                    connection.source == parent_node and connection.target == dragged_node):
+                    connections_to_remove.append(connection)
+            
+            for conn in connections_to_remove:
+                self._remove_connection(conn)
+            
+            # 他の子ノードの位置を調整
+            child_nodes = []
+            for conn in self.connections:
+                if (hasattr(conn, 'source') and hasattr(conn, 'target') and
+                    conn.source == parent_node):
+                    child_nodes.append(conn.target)
+            
+            # ドラッグされたノードを除外
+            child_nodes = [n for n in child_nodes if n != dragged_node]
+            
+            # 挿入位置にドラッグされたノードを挿入
+            child_nodes.insert(insert_index, dragged_node)
+            
+            # 新しい接続を作成
+            self._create_edge(parent_node, dragged_node)
+            
+            # 子ノードの位置を再配置
+            self._reposition_child_nodes(parent_node, child_nodes)
+            
+        except Exception as e:
+            print(f"_reorder_child_nodes エラー: {e}")
+
+    def _reposition_child_nodes(self, parent_node: 'NodeItem', child_nodes: list):
+        """子ノードの位置を再配置"""
+        try:
+            parent_rect = parent_node.sceneBoundingRect()
+            start_x = parent_rect.right() + 40  # 親ノードから40px右
+            start_y = parent_rect.center().y()
+            
+            # 子ノードを縦に配置
+            for i, child in enumerate(child_nodes):
+                new_y = start_y + (i - len(child_nodes) // 2) * 80  # 80px間隔
+                child.setPos(start_x, new_y)
+            
+            # 接続線を更新
+            for connection in self.connections:
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+                    
+        except Exception as e:
+            print(f"_reposition_child_nodes エラー: {e}")
+
+    def _check_lane_insertion(self, dragged_node: 'NodeItem', target_pos: QPointF) -> tuple[bool, list, int]:
+        """縦レーン内への割り込み挿入を判定（親距離を使わない）
+        Returns: (should_insert, lane_nodes, insert_index)
+        """
+        try:
+            from node import NodeItem
+            lane_width = 60.0  # ドロップX±lane_width内を同じ縦レーンとみなす
+            # 候補ノード（ドラッグ中以外）
+            candidates = [item for item in self.scene.items() if isinstance(item, NodeItem) and item is not dragged_node]
+            if not candidates:
+                return False, [], 0
+            # 近傍Xにあるノードを抽出
+            lane_nodes = [n for n in candidates if abs(n.pos().x() - target_pos.x()) <= lane_width]
+            if not lane_nodes:
+                return False, [], 0
+            # Y昇順で並べる
+            lane_nodes.sort(key=lambda n: n.pos().y())
+            # 中点境界で挿入位置を決める
+            if len(lane_nodes) == 1:
+                insert_index = 0 if target_pos.y() <= lane_nodes[0].pos().y() else 1
+                return True, lane_nodes, insert_index
+            # 中点群
+            midpoints = []
+            for i in range(len(lane_nodes) - 1):
+                midpoints.append((lane_nodes[i].pos().y() + lane_nodes[i+1].pos().y()) / 2.0)
+            # 先頭・末尾の外側も考慮
+            if target_pos.y() < midpoints[0]:
+                return True, lane_nodes, 0
+            for i in range(len(midpoints)-1):
+                if midpoints[i] <= target_pos.y() < midpoints[i+1]:
+                    return True, lane_nodes, i+1
+            return True, lane_nodes, len(lane_nodes)
+        except Exception as e:
+            print(f"_check_lane_insertion エラー: {e}")
+            return False, [], 0
+
+    def _reposition_lane_nodes(self, lane_nodes_with_dragged: list['NodeItem']) -> None:
+        """縦レーンのノード群を等間隔で再配置（Xは各ノードの現在位置を維持）"""
+        try:
+            if not lane_nodes_with_dragged:
+                return
+            # Y昇順で並び替えた上で中心基準に等間隔配置
+            lane_nodes_with_dragged.sort(key=lambda n: n.pos().y())
+            spacing = 80.0
+            # 中央を現状の中央値に近づける
+            ys = [n.pos().y() for n in lane_nodes_with_dragged]
+            center_y = sum(ys) / len(ys)
+            start_y = center_y - (len(lane_nodes_with_dragged)-1) * spacing / 2.0
+            for i, n in enumerate(lane_nodes_with_dragged):
+                n.setPos(n.pos().x(), start_y + i * spacing)
+            # 接続線更新
+            for connection in self.connections:
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+            self.scene.update()
+        except Exception as e:
+            print(f"_reposition_lane_nodes エラー: {e}")
+
     def _check_connection_line_collision(self, node: 'NodeItem', target_rect: QRectF) -> bool:
         """接続線との衝突をチェック（X軸方向のみ、Y軸方向は完全に自由）"""
         for connection in self.connections:

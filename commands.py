@@ -378,3 +378,60 @@ class DeleteNodeCommand(QUndoCommand):
         self.connected_edges.clear()
 
 
+class ReorderNodeCommand(QUndoCommand):
+    """ノードの順番変更コマンド"""
+    
+    def __init__(self, view, parent_node, dragged_node, old_index, new_index):
+        super().__init__()
+        self.view = view
+        self.parent_node = parent_node
+        self.dragged_node = dragged_node
+        self.old_index = old_index
+        self.new_index = new_index
+        self.old_positions = {}
+        self.new_positions = {}
+        
+    def redo(self):
+        """順番変更を実行"""
+        try:
+            # 子ノードの現在位置を保存
+            child_nodes = []
+            for conn in self.view.connections:
+                if (hasattr(conn, 'source') and hasattr(conn, 'target') and
+                    conn.source == self.parent_node):
+                    child_nodes.append(conn.target)
+            
+            # 古い位置を保存
+            for child in child_nodes:
+                self.old_positions[child] = child.pos()
+            
+            # 順番を変更
+            child_nodes.remove(self.dragged_node)
+            child_nodes.insert(self.new_index, self.dragged_node)
+            
+            # 新しい位置を計算・適用
+            self.view._reposition_child_nodes(self.parent_node, child_nodes)
+            
+            # 新しい位置を保存
+            for child in child_nodes:
+                self.new_positions[child] = child.pos()
+                
+        except Exception as e:
+            print(f"ReorderNodeCommand redo エラー: {e}")
+    
+    def undo(self):
+        """順番変更を元に戻す"""
+        try:
+            # 古い位置に戻す
+            for child, old_pos in self.old_positions.items():
+                child.setPos(old_pos)
+            
+            # 接続線を更新
+            for connection in self.view.connections:
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+                    
+        except Exception as e:
+            print(f"ReorderNodeCommand undo エラー: {e}")
+
+
