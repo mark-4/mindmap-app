@@ -3,6 +3,7 @@ Undo/Redoコマンド
 """
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QUndoCommand
+from node import NodeItem
 
 
 class AddNodeCommand(QUndoCommand):
@@ -35,6 +36,14 @@ class AddNodeCommand(QUndoCommand):
         self.node = self.view.add_node(self.label, self.pos, self.is_parent_node)
         if self.parent_node is not None:
             self.connection = self.view._create_edge(self.parent_node, self.node)
+        
+        # 新しく作成されたノードを選択
+        if self.node is not None:
+            # 他のノードの選択を解除
+            for item in self.view.scene.selectedItems():
+                item.setSelected(False)
+            # 新しいノードを選択
+            self.node.setSelected(True)
     
     def undo(self):
         """ノードを削除"""
@@ -42,6 +51,8 @@ class AddNodeCommand(QUndoCommand):
             self.view.remove_edge(self.connection, self.parent_node, self.node)
         if self.node is not None:
             self.view.scene.removeItem(self.node)
+
+
 
 
 class ConnectNodesCommand(QUndoCommand):
@@ -83,49 +94,87 @@ class MoveNodeCommand(QUndoCommand):
     - ノードの移動操作のアンドゥ・リドゥ対応
     - ノードの位置変更の記録と復元
     - 移動前後の位置の管理
+    - 接続線の自動更新
     
     主要なメソッド：
     - redo(): ノードの移動実行
     - undo(): ノードの移動取り消し
     """
     
-    def __init__(self, node: 'NodeItem', old_pos: QPointF, new_pos: QPointF):
+    def __init__(self, view: 'MindMapView', node: 'NodeItem', old_pos: QPointF, new_pos: QPointF):
         super().__init__("ノード移動")
+        self.view = view
         self.node = node
         self.old_pos = QPointF(old_pos)
         self.new_pos = QPointF(new_pos)
     
     def redo(self):
         self.node.setPos(self.new_pos)
-        self.node._update_attached_lines()
+        # 接続線を更新
+        for connection in self.view.connections:
+            if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                (connection.source == self.node or connection.target == self.node)):
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+        self.view.scene.update()
     
     def undo(self):
         self.node.setPos(self.old_pos)
-        self.node._update_attached_lines()
+        # 接続線を更新
+        for connection in self.view.connections:
+            if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                (connection.source == self.node or connection.target == self.node)):
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+        self.view.scene.update()
 
 
 class MoveMultipleNodesCommand(QUndoCommand):
-    """複数ノード移動コマンド"""
+    """
+    複数ノード移動のアンドゥ・リドゥコマンド
     
-    def __init__(self, nodes: list['NodeItem'], old_positions: list[QPointF], new_positions: list[QPointF]):
+    このクラスは以下の機能を提供します：
+    - 複数ノードの一括移動操作のアンドゥ・リドゥ対応
+    - 複数ノードの位置変更の記録と復元
+    - 接続線の自動更新
+    
+    主要なメソッド：
+    - redo(): 複数ノードの移動実行
+    - undo(): 複数ノードの移動取り消し
+    """
+    
+    def __init__(self, view: 'MindMapView', nodes: list['NodeItem'], old_positions: list[QPointF], new_positions: list[QPointF]):
         super().__init__("複数ノード移動")
+        self.view = view
         self.nodes = nodes
         self.old_positions = [QPointF(pos) for pos in old_positions]
         self.new_positions = [QPointF(pos) for pos in new_positions]
     
     def redo(self):
+        """複数ノードを新しい位置に移動"""
         for node, new_pos in zip(self.nodes, self.new_positions):
             node.setPos(new_pos)
-        # 全てのノードの接続線を更新
-        for node in self.nodes:
-            node._update_attached_lines()
+        
+        # 移動したノードに関連する接続線を更新
+        self._update_connections()
+        self.view.scene.update()
     
     def undo(self):
+        """複数ノードを元の位置に戻す"""
         for node, old_pos in zip(self.nodes, self.old_positions):
             node.setPos(old_pos)
-        # 全てのノードの接続線を更新
-        for node in self.nodes:
-            node._update_attached_lines()
+        
+        # 移動したノードに関連する接続線を更新
+        self._update_connections()
+        self.view.scene.update()
+    
+    def _update_connections(self):
+        """移動したノードに関連する接続線を更新"""
+        for connection in self.view.connections:
+            if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                (connection.source in self.nodes or connection.target in self.nodes)):
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
 
 
 class MoveNodeWithRelatedCommand(QUndoCommand):
@@ -204,7 +253,18 @@ class MoveNodeWithRelatedCommand(QUndoCommand):
 
 
 class RenameNodeCommand(QUndoCommand):
-    """ノードリネームコマンド"""
+    """
+    ノードリネームのアンドゥ・リドゥコマンド
+    
+    このクラスは以下の機能を提供します：
+    - ノードのテキスト変更のアンドゥ・リドゥ対応
+    - テキスト変更前後の状態管理
+    - テキスト位置の自動調整
+    
+    主要なメソッド：
+    - redo(): ノードのテキスト変更実行
+    - undo(): ノードのテキスト変更取り消し
+    """
     
     def __init__(self, node: 'NodeItem', old_text: str, new_text: str):
         super().__init__("ノードリネーム")
@@ -219,6 +279,59 @@ class RenameNodeCommand(QUndoCommand):
     def undo(self):
         self.node.text_item.setPlainText(self.old_text)
         self.node._update_text_position()
+
+
+class SubtreeMoveCommand(QUndoCommand):
+    """
+    サブツリー移動のアンドゥ・リドゥコマンド
+    
+    このクラスは以下の機能を提供します：
+    - ノードとその子孫ノードの一括移動
+    - サブツリー全体の移動操作のアンドゥ・リドゥ対応
+    - 接続線の状態保存と復元
+    
+    主要なメソッド：
+    - redo(): サブツリーの移動実行
+    - undo(): サブツリーの移動取り消し
+    """
+    
+    def __init__(self, view: 'MindMapView', root_node: 'NodeItem', old_positions: dict, new_positions: dict, old_connections: dict):
+        super().__init__("サブツリー移動")
+        self.view = view
+        self.root_node = root_node
+        self.old_positions = old_positions.copy()
+        self.new_positions = new_positions.copy()
+        self.old_connections = old_connections.copy()
+    
+    def redo(self):
+        # ノード位置を復元
+        for node, new_pos in self.new_positions.items():
+            node.setPos(new_pos)
+        
+        # 接続線を更新
+        for connection in self.view.connections:
+            if hasattr(connection, 'update_connection'):
+                connection.update_connection()
+        self.view.scene.update()
+    
+    def undo(self):
+        # ノード位置を元に戻す
+        for node, old_pos in self.old_positions.items():
+            node.setPos(old_pos)
+        
+        # 接続線を元の状態に戻す
+        for connection_id, connection_data in self.old_connections.items():
+            for connection in self.view.connections:
+                if id(connection) == connection_id:
+                    if connection.horizontal_line1 and connection_data.get('horizontal_line1_line'):
+                        connection.horizontal_line1.setLine(connection_data['horizontal_line1_line'])
+                    if connection.vertical_line and connection_data.get('vertical_line_line'):
+                        connection.vertical_line.setLine(connection_data['vertical_line_line'])
+                    if connection.horizontal_line2 and connection_data.get('horizontal_line2_line'):
+                        connection.horizontal_line2.setLine(connection_data['horizontal_line2_line'])
+                    break
+        
+        self.view.scene.update()
 
 
 class DeleteNodeCommand(QUndoCommand):
@@ -263,4 +376,5 @@ class DeleteNodeCommand(QUndoCommand):
             else:
                 target.attach_edge(connection, source)
         self.connected_edges.clear()
+
 

@@ -53,13 +53,28 @@ class MainWindow(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         
-        # ウィンドウのスタイルシートも設定
+        # ウィンドウのスタイルシートも設定（OSのデスクトップが透けて見えるように）
         self.setStyleSheet("""
             QMainWindow { 
                 background: transparent; 
+                border: none; 
             }
-            QToolBar {
-                background: rgba(240, 240, 240, 200);
+            QToolBar { 
+                background: rgba(240, 240, 240, 150); 
+                border: none; 
+                border-radius: 5px; 
+            }
+            QToolButton { 
+                background: rgba(255, 255, 255, 100); 
+                border: 1px solid rgba(200, 200, 200, 60); 
+                border-radius: 3px; 
+                padding: 5px; 
+            }
+            QToolButton:hover { 
+                background: rgba(255, 255, 255, 150); 
+            }
+            QToolButton:pressed { 
+                background: rgba(200, 200, 200, 150); 
             }
         """)
         
@@ -102,6 +117,8 @@ class MainWindow(QMainWindow):
         action_add.triggered.connect(self._add_node)
         toolbar.addAction(action_add)
 
+        # キューブノード追加
+
         # 全選択
         action_select_all = QAction("全選択", self)
         action_select_all.setStatusTip("全てのノードを選択 (Cmd+A)")
@@ -131,6 +148,14 @@ class MainWindow(QMainWindow):
         action_auto_fit.toggled.connect(self._toggle_auto_fit)
         toolbar.addAction(action_auto_fit)
 
+        # アトラクション
+        action_attraction = QAction("アトラクション", self)
+        action_attraction.setCheckable(True)
+        action_attraction.setChecked(False)
+        action_attraction.setStatusTip("全てのノードをランダムに動かす (ESCで終了)")
+        action_attraction.toggled.connect(self._toggle_attraction)
+        toolbar.addAction(action_attraction)
+
         # ズーム速度
         action_zoom_speed = QAction("ズーム速度", self)
         action_zoom_speed.setStatusTip("ズーム速度を調整")
@@ -153,6 +178,7 @@ class MainWindow(QMainWindow):
         # グリッドスナップ
         action_grid_snap = QAction("グリッドスナップ", self)
         action_grid_snap.setCheckable(True)
+        action_grid_snap.setChecked(True)  # デフォルトでオン
         action_grid_snap.setStatusTip("グリッドスナップのON/OFF")
         action_grid_snap.toggled.connect(self._toggle_grid_snap)
         toolbar.addAction(action_grid_snap)
@@ -199,6 +225,7 @@ class MainWindow(QMainWindow):
         
         self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
 
+
     def _toggle_connect_mode(self, enabled: bool):
         """接続モードの切り替え"""
         self.view.connect_mode_enabled = enabled
@@ -220,12 +247,15 @@ class MainWindow(QMainWindow):
             self,
             self.view.get_background_transparency(),
             self.view.get_node_transparency(),
-            self.view.get_line_transparency()
+            self.view.get_line_transparency(),
+            self.view.get_window_transparency()
         )
         if dialog.exec() == QDialog.Accepted:
             self.view.set_background_transparency(dialog.get_background_transparency())
             self.view.set_node_transparency(dialog.get_node_transparency())
             self.view.set_line_transparency(dialog.get_line_transparency())
+            # ウィンドウ全体の透明度も設定
+            self.view.set_window_transparency(dialog.get_window_transparency())
 
     def _toggle_grid(self, enabled: bool):
         """グリッドの切り替え"""
@@ -242,6 +272,15 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("オートフィット: ON - ノード追加時に自動的に画面に収まるように調整")
         else:
             self.statusBar().showMessage("オートフィット: OFF")
+
+    def _toggle_attraction(self, enabled: bool):
+        """アトラクションの切り替え"""
+        if enabled:
+            self.view.start_attraction_mode()
+            self.statusBar().showMessage("アトラクション: ON - 全てのノードがランダムに動きます (ESCで終了)")
+        else:
+            self.view.stop_attraction_mode()
+            self.statusBar().showMessage("アトラクション: OFF")
 
     def _delete_selected_nodes(self):
         """選択されたノードを削除"""

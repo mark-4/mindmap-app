@@ -2,13 +2,18 @@
 ビュー関連のクラス
 """
 import json
-from PySide6.QtCore import QRectF, QPointF, Qt
+import random
+import math
+from PySide6.QtCore import QRectF, QPointF, Qt, QTimer
 from PySide6.QtGui import (
     QBrush,
     QPainter,
+    QPen,
     QUndoStack,
     QKeySequence,
     QPixmap,
+    QAction,
+    QColor,
 )
 from PySide6.QtWidgets import (
     QGraphicsScene,
@@ -24,6 +29,8 @@ from commands import (
     MoveNodeCommand,
     MoveMultipleNodesCommand,
     MoveNodeWithRelatedCommand,
+    RenameNodeCommand,
+    SubtreeMoveCommand,
     DeleteNodeCommand,
 )
 
@@ -89,19 +96,46 @@ class MindMapView(QGraphicsView):
         # ピンチジェスチャーの初期スケール値
         self._pinch_scale_factor = 1.0
         
+        # レイアウト定数
+        self.VERTICAL_GAP = 60.0  # 垂直間隔
+        self.PARENT_COLUMN_OFFSET = 200.0  # 親ノード列のXオフセット
+        self.NODE_WIDTH = 128.0  # ノードの幅
+        self.NODE_HEIGHT = 72.0  # ノードの高さ
+        
+        # サブツリードラッグ機能の状態管理
+        self._subtree_drag_mode = False
+        self._subtree_drag_root = None
+        self._subtree_drag_start_pos = None
+        self._subtree_drag_snapshot = {}  # {node: original_position}
+        self._subtree_drag_edges_snapshot = {}  # {connection: original_control_points}
+        
         # 透明度のパラメータ
         self.background_transparency = 1.0
         self.node_transparency = 1.0
         self.line_transparency = 1.0
+        self.window_transparency = 1.0
         
         # グリッドのパラメータ
         self.grid_enabled = False
-        self.grid_size = 20
-        self.grid_snap_enabled = False
+        self.grid_size = 20  # より適切なグリッドサイズに変更
+        self.grid_snap_enabled = True
+        self.snap_threshold = 10.0   # スナップ閾値（グリッドサイズの50%）
+        self.snap_strength = 1.0    # スナップ強度（完全スナップ）
         
         # 複数ノード選択時の移動用
         self._multi_move_start_positions: dict[NodeItem, QPointF] = {}
+        self._is_multi_move_undo_pending = False
         self._is_multi_move_in_progress = False
+        
+        # Shiftキー状態の追跡
+        self._shift_key_pressed = False
+        
+        # アトラクションモード用
+        self._attraction_mode = False
+        self._attraction_timer = QTimer()
+        self._attraction_timer.timeout.connect(self._update_attraction)
+        self._original_positions = {}  # ノードの元の位置を保存
+        self._original_connections = {}  # 接続線の元の状態を保存
         
         # オートフィット機能
         self.auto_fit_enabled = False
@@ -127,11 +161,11 @@ class MindMapView(QGraphicsView):
         node.setOpacity(self.node_transparency)
         self.scene.addItem(node)
         
-        # オートフィットが有効な場合は自動的にフィット
-        if self.auto_fit_enabled:
-            self.fit_all_nodes()
+        # レイアウトの再計算と再描画
+        self.relayout()
         
         return node
+    
 
     def wheelEvent(self, event):
         """マウスホイール・2本指スワイプでパン（スクロール）"""
@@ -203,7 +237,7 @@ class MindMapView(QGraphicsView):
 
     def set_node_transparency(self, transparency: float):
         """ノード透明度を設定"""
-        if 0.1 <= transparency <= 1.0:
+        if 0.0 <= transparency <= 1.0:
             self.node_transparency = transparency
             for item in self.scene.items():
                 if isinstance(item, NodeItem):
@@ -216,6 +250,15 @@ class MindMapView(QGraphicsView):
             for item in self.scene.items():
                 if isinstance(item, QGraphicsLineItem):
                     item.setOpacity(transparency)
+    
+    def set_window_transparency(self, transparency: float):
+        """ウィンドウ透明度を設定"""
+        if 0.1 <= transparency <= 1.0:
+            self.window_transparency = transparency
+            # 親ウィンドウの透明度を設定
+            parent_window = self.window()
+            if parent_window:
+                parent_window.setWindowOpacity(transparency)
 
     def get_background_transparency(self) -> float:
         """現在の背景透明度を取得"""
@@ -228,6 +271,10 @@ class MindMapView(QGraphicsView):
     def get_line_transparency(self) -> float:
         """現在の接続線透明度を取得"""
         return self.line_transparency
+    
+    def get_window_transparency(self) -> float:
+        """現在のウィンドウ透明度を取得"""
+        return self.window_transparency
     
     def set_grid_enabled(self, enabled: bool):
         """グリッド表示のON/OFFを設定"""
@@ -245,6 +292,14 @@ class MindMapView(QGraphicsView):
     def get_grid_snap_enabled(self) -> bool:
         """グリッドスナップの状態を取得"""
         return self.grid_snap_enabled
+    
+    def set_snap_threshold(self, threshold: float):
+        """スナップ閾値を設定"""
+        self.snap_threshold = threshold
+    
+    def set_snap_strength(self, strength: float):
+        """スナップ強度を設定（0.0-1.0）"""
+        self.snap_strength = max(0.0, min(1.0, strength))
     
     def set_grid_size(self, size: int):
         """グリッドサイズを設定"""
@@ -279,29 +334,71 @@ class MindMapView(QGraphicsView):
             self.scene.setBackgroundBrush(self._create_grid_brush())
         else:
             self.scene.setBackgroundBrush(QBrush(Qt.transparent))
+        # シーンの再描画を強制
+        self.scene.update()
     
     def _create_grid_brush(self):
-        """グリッドブラシを作成"""
-        pixmap = QPixmap(self.grid_size, self.grid_size)
+        """グリッドブラシを作成（100px毎に色を変える）"""
+        # 100pxの倍数でグリッドサイズを調整
+        major_grid_size = 100
+        minor_grid_size = self.grid_size
+        
+        # パターンサイズを100pxの倍数に設定（最小100px）
+        pattern_size = max(major_grid_size, minor_grid_size)
+        # 100pxの倍数に調整
+        pattern_size = ((pattern_size - 1) // major_grid_size + 1) * major_grid_size
+        
+        pixmap = QPixmap(pattern_size, pattern_size)
         pixmap.fill(Qt.transparent)
         
         painter = QPainter(pixmap)
-        painter.setPen(QPen(Qt.lightGray, 1))
-        painter.drawLine(0, self.grid_size, self.grid_size, self.grid_size)
-        painter.drawLine(self.grid_size, 0, self.grid_size, self.grid_size)
+        
+        # 薄いグリッド線（通常のグリッド）
+        painter.setPen(QPen(QColor(200, 200, 200, 100), 1))  # 薄いグレー
+        for i in range(0, pattern_size, minor_grid_size):
+            if i % major_grid_size != 0:  # 100pxの倍数でない場合のみ
+                painter.drawLine(i, 0, i, pattern_size - 1)
+                painter.drawLine(0, i, pattern_size - 1, i)
+        
+        # 濃いグリッド線（100px毎）
+        painter.setPen(QPen(QColor(150, 150, 150, 200), 1))  # 濃いグレー
+        for i in range(0, pattern_size + 1, major_grid_size):
+            painter.drawLine(i, 0, i, pattern_size)
+            painter.drawLine(0, i, pattern_size, i)
+        
         painter.end()
         
-        return QBrush(pixmap)
+        brush = QBrush(pixmap)
+        brush.setTransform(brush.transform().translate(0, 0))
+        return brush
     
-    def snap_to_grid(self, pos: QPointF) -> QPointF:
-        """位置をグリッドにスナップ"""
+    def snap_to_grid(self, pos: QPointF, threshold: float = None) -> QPointF:
+        """位置をグリッドにスナップ（カクカクしたスナップ）"""
         if not self.grid_snap_enabled:
             return pos
         
         grid_size = self.grid_size
-        snapped_x = round(pos.x() / grid_size) * grid_size
-        snapped_y = round(pos.y() / grid_size) * grid_size
-        return QPointF(snapped_x, snapped_y)
+        if threshold is None:
+            threshold = self.snap_threshold
+        
+        # グリッド位置を計算（ノードの中心をグリッド線に合わせる）
+        grid_x = round(pos.x() / grid_size) * grid_size
+        grid_y = round(pos.y() / grid_size) * grid_size
+        
+        # 閾値内の場合のみスナップ
+        dx = abs(pos.x() - grid_x)
+        dy = abs(pos.y() - grid_y)
+        
+        # X軸とY軸を個別にチェック（より積極的なスナップ）
+        snap_x = pos.x()
+        snap_y = pos.y()
+        
+        if dx <= threshold:
+            snap_x = grid_x
+        if dy <= threshold:
+            snap_y = grid_y
+        
+        return QPointF(snap_x, snap_y)
 
     def fit_all_nodes(self):
         """全てのノードが画面に収まるように調整"""
@@ -321,6 +418,119 @@ class MindMapView(QGraphicsView):
         # ビューを調整
         self.fitInView(rect, Qt.KeepAspectRatio)
 
+    def start_attraction_mode(self):
+        """アトラクションモードを開始"""
+        if self._attraction_mode:
+            return
+        
+        self._attraction_mode = True
+        
+        # 全てのノードの元の位置を保存
+        self._original_positions.clear()
+        all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
+        for node in all_nodes:
+            self._original_positions[node] = node.pos()
+        
+        # 全ての接続線の元の状態を保存
+        self._original_connections.clear()
+        for connection in self.connections:
+            if hasattr(connection, 'source') and hasattr(connection, 'target'):
+                # 接続線の詳細な状態を保存
+                connection_data = {
+                    'source': connection.source,
+                    'target': connection.target,
+                    'horizontal_line1_line': connection.horizontal_line1.line() if connection.horizontal_line1 else None,
+                    'vertical_line_line': connection.vertical_line.line() if connection.vertical_line else None,
+                    'horizontal_line2_line': connection.horizontal_line2.line() if connection.horizontal_line2 else None,
+                }
+                self._original_connections[id(connection)] = connection_data
+        
+        # タイマーを開始（30FPS）
+        self._attraction_timer.start(33)  # 約30FPS
+
+    def stop_attraction_mode(self):
+        """アトラクションモードを終了"""
+        if not self._attraction_mode:
+            return
+        
+        self._attraction_mode = False
+        self._attraction_timer.stop()
+        
+        # 全てのノードを元の位置に戻す
+        for node, original_pos in self._original_positions.items():
+            node.setPos(original_pos)
+        
+        # ノード位置の復元後にシーンを一度更新
+        self.scene.update()
+        
+        # 全ての接続線を元の状態に戻す
+        for connection in self.connections:
+            connection_id = id(connection)
+            if connection_id in self._original_connections:
+                # 保存された接続線の状態を復元
+                original_data = self._original_connections[connection_id]
+                if connection.horizontal_line1 and original_data['horizontal_line1_line']:
+                    connection.horizontal_line1.setLine(original_data['horizontal_line1_line'])
+                if connection.vertical_line and original_data['vertical_line_line']:
+                    connection.vertical_line.setLine(original_data['vertical_line_line'])
+                if connection.horizontal_line2 and original_data['horizontal_line2_line']:
+                    connection.horizontal_line2.setLine(original_data['horizontal_line2_line'])
+            else:
+                # フォールバック: 通常の更新
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+        
+        # 最終的なシーンの更新
+        self.scene.update()
+        
+        # 元の位置と接続線の状態をクリア
+        self._original_positions.clear()
+        self._original_connections.clear()
+
+    def _update_attraction(self):
+        """アトラクションモードの更新処理"""
+        if not self._attraction_mode:
+            return
+        
+        all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
+        if not all_nodes:
+            return
+        
+        # ビューのサイズを取得
+        view_rect = self.mapToScene(self.viewport().rect()).boundingRect()
+        
+        for node in all_nodes:
+            # 現在の位置を取得
+            current_pos = node.pos()
+            
+            # ランダムな移動量を生成
+            move_x = random.uniform(-5, 5)
+            move_y = random.uniform(-5, 5)
+            
+            # 新しい位置を計算
+            new_x = current_pos.x() + move_x
+            new_y = current_pos.y() + move_y
+            
+            # ビューの境界内に制限
+            node_width = node.boundingRect().width()
+            node_height = node.boundingRect().height()
+            
+            new_x = max(view_rect.left() + node_width/2, 
+                       min(view_rect.right() - node_width/2, new_x))
+            new_y = max(view_rect.top() + node_height/2, 
+                       min(view_rect.bottom() - node_height/2, new_y))
+            
+            # ノードの位置を更新
+            node.setPos(new_x, new_y)
+        
+        # 接続線を更新
+        for connection in self.connections:
+            if hasattr(connection, 'update_connection'):
+                connection.update_connection()
+        
+        # シーンを更新
+        self.scene.update()
+
     def mousePressEvent(self, event):
         """マウスプレスイベント"""
         # 複数ノード選択時の移動開始位置を記録
@@ -329,6 +539,7 @@ class MindMapView(QGraphicsView):
             if len(selected_nodes) > 1:
                 self._multi_move_start_positions.clear()
                 self._is_multi_move_in_progress = True
+                self._is_multi_move_undo_pending = False  # リセット
                 for node in selected_nodes:
                     self._multi_move_start_positions[node] = node.pos()
         
@@ -353,21 +564,82 @@ class MindMapView(QGraphicsView):
     def mouseMoveEvent(self, event):
         """マウス移動イベント"""
         if self._is_multi_move_in_progress:
-            pass
+            # 複数ノード移動中の接続線更新
+            selected_nodes = [item for item in self.scene.selectedItems() if isinstance(item, NodeItem)]
+            for connection in self.connections:
+                if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                    (connection.source in selected_nodes or connection.target in selected_nodes)):
+                    # 接続線の更新メソッドを呼び出し
+                    if hasattr(connection, 'update_connection'):
+                        connection.update_connection()
+            # シーンの再描画
+            self.scene.update()
+        
+        
         super().mouseMoveEvent(event)
+    
+    
+    def keyPressEvent(self, event):
+        """キー押下イベント"""
+        if event.key() == Qt.Key_Shift:
+            # Shiftキーが押された場合の処理
+            self._shift_key_pressed = True
+            # ステータスバーにメッセージを表示
+            if hasattr(self, 'statusBar') and self.statusBar():
+                self.statusBar().showMessage("Shiftキー: 単独ノード移動モード")
+        elif event.key() == Qt.Key_Escape:
+            # ESCキーでアトラクションモードを終了
+            if self._attraction_mode:
+                self.stop_attraction_mode()
+                # ボタンの状態も更新
+                parent_window = self.window()
+                if parent_window:
+                    # ツールバーからアトラクションボタンを探して状態を更新
+                    for action in parent_window.findChildren(QAction):
+                        if action.text() == "アトラクション":
+                            action.setChecked(False)
+                            break
+                    # ステータスバーにメッセージを表示
+                    if hasattr(parent_window, 'statusBar') and parent_window.statusBar():
+                        parent_window.statusBar().showMessage("アトラクション: OFF")
+        super().keyPressEvent(event)
+    
+    def keyReleaseEvent(self, event):
+        """キーリリースイベント"""
+        if event.key() == Qt.Key_Shift:
+            # Shiftキーが離された場合の処理
+            self._shift_key_pressed = False
+            # ステータスバーメッセージをクリア
+            if hasattr(self, 'statusBar') and self.statusBar():
+                self.statusBar().clearMessage()
+        super().keyReleaseEvent(event)
 
     def mouseReleaseEvent(self, event):
         """マウスリリースイベント"""
         if event.button() == Qt.LeftButton and self._is_multi_move_in_progress:
-            self._handle_multi_move_end()
+            # 複数ノード移動の終了処理（一度だけ実行）
+            # タイマーを使用して、全てのmouseReleaseEventが完了してから実行
+            if not hasattr(self, '_multi_move_end_timer'):
+                self._multi_move_end_timer = QTimer()
+                self._multi_move_end_timer.setSingleShot(True)
+                self._multi_move_end_timer.timeout.connect(self._handle_multi_move_end)
+            
+            # 10ms後に実行（全てのmouseReleaseEventが完了するまで待機）
+            self._multi_move_end_timer.start(10)
         super().mouseReleaseEvent(event)
 
     def _handle_multi_move_end(self):
         """複数ノード移動の終了処理"""
+        # 重複実行を防ぐ
+        if not self._is_multi_move_in_progress or self._is_multi_move_undo_pending:
+            return
+            
         if not self._multi_move_start_positions:
             self._is_multi_move_in_progress = False
             return
         
+        # ローカルでNodeItemをインポート（内包表記内で参照可能にする）
+        from node import NodeItem
         selected_nodes = [item for item in self.scene.selectedItems() if isinstance(item, NodeItem)]
         
         if len(selected_nodes) <= 1:
@@ -375,50 +647,100 @@ class MindMapView(QGraphicsView):
             self._multi_move_start_positions.clear()
             return
         
-        # 移動量を計算
-        moved_nodes = []
-        delta_x = 0
-        delta_y = 0
+        # 各ノードの移動量を個別に計算
+        old_positions = []
+        new_positions = []
+        has_movement = False
         
         for node in selected_nodes:
             if node in self._multi_move_start_positions:
-                start_pos = self._multi_move_start_positions[node]
-                current_pos = node.pos()
-                node_delta_x = current_pos.x() - start_pos.x()
-                node_delta_y = current_pos.y() - start_pos.y()
+                old_pos = self._multi_move_start_positions[node]
+                new_pos = node.pos()
                 
-                if abs(node_delta_x) > 0.1 or abs(node_delta_y) > 0.1:
-                    moved_nodes.append(node)
-                    delta_x = node_delta_x
-                    delta_y = node_delta_y
-                    break
+                # 移動距離をチェック
+                move_distance = ((new_pos.x() - old_pos.x()) ** 2 + (new_pos.y() - old_pos.y()) ** 2) ** 0.5
+                if move_distance > 1.0:
+                    has_movement = True
+                
+                old_positions.append(old_pos)
+                new_positions.append(new_pos)
+            else:
+                # 開始位置が記録されていない場合は現在位置を使用
+                current_pos = node.pos()
+                old_positions.append(current_pos)
+                new_positions.append(current_pos)
         
-        if not moved_nodes:
+        # 衝突検出：選択ノード群のいずれかが他ノードに重なる場合は全体を元位置に戻す
+        collision_detected = False
+        if has_movement:
+            try:
+                from node import NodeItem  # 遅延インポート
+                margin = 5
+                for n in selected_nodes:
+                    # nの現在位置での矩形
+                    n_rect = QRectF(
+                        n.pos().x() - n.boundingRect().width() / 2.0,
+                        n.pos().y() - n.boundingRect().height() / 2.0,
+                        n.boundingRect().width(),
+                        n.boundingRect().height(),
+                    )
+                    for item in self.scene.items():
+                        if isinstance(item, NodeItem) and item not in selected_nodes:
+                            item_rect = item.sceneBoundingRect()
+                            expanded_rect = QRectF(
+                                item_rect.x() - margin,
+                                item_rect.y() - margin,
+                                item_rect.width() + 2 * margin,
+                                item_rect.height() + 2 * margin,
+                            )
+                            if n_rect.intersects(expanded_rect):
+                                collision_detected = True
+                                break
+                    if collision_detected:
+                        break
+            except Exception as e:
+                print(f"複数移動 衝突検出エラー: {e}")
+
+        if collision_detected:
+            # 元位置に一括ロールバック
+            for node in selected_nodes:
+                if node in self._multi_move_start_positions:
+                    node.setPos(self._multi_move_start_positions[node])
+            # 接続線更新
+            for connection in self.connections:
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+            self.scene.update()
+            # 状態リセット
             self._is_multi_move_in_progress = False
             self._multi_move_start_positions.clear()
             return
+
+        # 移動があった場合のみUndoスタックに追加（衝突が無い場合）
+        if has_movement and self.undo_stack is not None and not self._is_multi_move_undo_pending:
+            print(f"複数ノード移動Undoコマンドをプッシュ: {len(selected_nodes)}個のノード")
+            self.undo_stack.push(MoveMultipleNodesCommand(self, selected_nodes, old_positions, new_positions))
+            self._is_multi_move_undo_pending = True
+        elif has_movement:
+            print(f"複数ノード移動Undoコマンドをスキップ: has_movement={has_movement}, undo_stack={self.undo_stack is not None}, pending={self._is_multi_move_undo_pending}")
+        else:
+            print(f"複数ノード移動Undoコマンドをスキップ: 移動なし (has_movement={has_movement})")
         
-        # 移動距離が十分大きい場合のみUndoスタックに追加
-        move_distance = (delta_x ** 2 + delta_y ** 2) ** 0.5
-        
-        if move_distance > 5.0 and self.undo_stack is not None:
-            old_positions = []
-            new_positions = []
-            
-            for node in selected_nodes:
-                if node in self._multi_move_start_positions:
-                    old_node_pos = self._multi_move_start_positions[node]
-                else:
-                    old_node_pos = node.pos()
-                new_node_pos = QPointF(old_node_pos.x() + delta_x, old_node_pos.y() + delta_y)
-                old_positions.append(old_node_pos)
-                new_positions.append(new_node_pos)
-            
-            self.undo_stack.push(MoveMultipleNodesCommand(selected_nodes, old_positions, new_positions))
+        # 移動したノードに関連する接続線を更新
+        for connection in self.connections:
+            if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                (connection.source in selected_nodes or connection.target in selected_nodes)):
+                # 接続線の更新メソッドを呼び出し
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
         
         # 状態をクリア
         self._is_multi_move_in_progress = False
         self._multi_move_start_positions.clear()
+        self._is_multi_move_undo_pending = False
+        
+        # シーンの再描画
+        self.scene.update()
 
     def keyPressEvent(self, event):
         """キープレスイベント"""
@@ -489,11 +811,19 @@ class MindMapView(QGraphicsView):
             else:
                 new_node = self.add_node("新規ノード", new_pos)
                 self._create_edge(parent_node, new_node)
+                # 新しく作成されたノードを選択
+                for item in self.scene.selectedItems():
+                    item.setSelected(False)
+                new_node.setSelected(True)
         else:
             if self.undo_stack is not None:
                 self.undo_stack.push(AddNodeCommand(self, "新規ノード", None, None, True))
             else:
-                self.add_node("新規ノード", None, True)
+                new_node = self.add_node("新規ノード", None, True)
+                # 新しく作成されたノードを選択
+                for item in self.scene.selectedItems():
+                    item.setSelected(False)
+                new_node.setSelected(True)
 
     def _create_edge(self, source: NodeItem, target: NodeItem) -> CrankConnection:
         """エッジを作成"""
@@ -593,10 +923,19 @@ class MindMapView(QGraphicsView):
             return self.mapToScene(self.viewport().rect().center())
         
         # 新しい配置ロジックを使用
-        return self._calculate_parent_insert_position(center_node)
+        return self.calculate_parent_insert_position(center_node)
     
-    def _get_subtree_bbox(self, root_node: NodeItem, include_descendants: bool = True) -> dict:
-        """サブツリーの境界ボックスを計算"""
+    def get_subtree_bbox(self, root_node: NodeItem, include_descendants: bool = True) -> dict:
+        """
+        サブツリーの境界ボックスを計算
+        
+        Args:
+            root_node: ルートノード
+            include_descendants: 子孫ノードを含めるかどうか
+            
+        Returns:
+            BBox辞書: {x, y, width, height, bottom}
+        """
         if root_node is None:
             return {"x": 0, "y": 0, "width": 0, "height": 0, "bottom": 0}
         
@@ -616,7 +955,7 @@ class MindMapView(QGraphicsView):
             # 子ノードを再帰的に取得
             child_nodes = self._get_child_nodes(root_node)
             for child in child_nodes:
-                child_bbox = self._get_subtree_bbox(child, True)
+                child_bbox = self.get_subtree_bbox(child, True)
                 min_x = min(min_x, child_bbox["x"])
                 min_y = min(min_y, child_bbox["y"])
                 max_x = max(max_x, child_bbox["x"] + child_bbox["width"])
@@ -629,6 +968,10 @@ class MindMapView(QGraphicsView):
             "height": max_y - min_y,
             "bottom": max_y
         }
+    
+    def _get_subtree_bbox(self, root_node: NodeItem, include_descendants: bool = True) -> dict:
+        """後方互換性のためのエイリアス"""
+        return self.get_subtree_bbox(root_node, include_descendants)
     
     def _get_child_nodes(self, parent_node: NodeItem) -> list[NodeItem]:
         """指定されたノードの子ノードを取得"""
@@ -647,6 +990,182 @@ class MindMapView(QGraphicsView):
                     break
         
         return child_nodes
+    
+    def get_descendants(self, root_node: NodeItem) -> list[NodeItem]:
+        """
+        指定されたノードの子孫ノード（子、孫、曾孫など）を再帰的に取得
+        
+        Args:
+            root_node: ルートノード
+            
+        Returns:
+            list[NodeItem]: 子孫ノードのリスト
+        """
+        descendants = []
+        child_nodes = self._get_child_nodes(root_node)
+        
+        for child in child_nodes:
+            descendants.append(child)
+            # 再帰的に子孫ノードを取得
+            descendants.extend(self.get_descendants(child))
+        
+        return descendants
+    
+    def begin_subtree_drag(self, root_node: NodeItem):
+        """
+        サブツリードラッグを開始
+        
+        Args:
+            root_node: ドラッグするルートノード
+        """
+        self._subtree_drag_mode = True
+        self._subtree_drag_root = root_node
+        self._subtree_drag_start_pos = root_node.pos()
+        
+        # 子孫ノードを取得
+        descendants = self.get_descendants(root_node)
+        
+        # スナップショットを作成
+        self._subtree_drag_snapshot = {}
+        self._subtree_drag_edges_snapshot = {}
+        
+        # ルートノードの位置を記録
+        self._subtree_drag_snapshot[root_node] = root_node.pos()
+        
+        # 元の位置を保存（衝突時の復元用）
+        self._subtree_drag_original_positions = {}
+        self._subtree_drag_original_positions[root_node] = root_node.pos()
+        
+        # 子孫ノードの位置を記録
+        for descendant in descendants:
+            self._subtree_drag_snapshot[descendant] = descendant.pos()
+            self._subtree_drag_original_positions[descendant] = descendant.pos()
+        
+        # サブツリー内の接続線の制御点を記録
+        for connection in self.connections:
+            if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                (connection.source == root_node or connection.source in descendants or
+                 connection.target == root_node or connection.target in descendants)):
+                # 接続線の制御点を記録（CrankConnectionの場合は各線分の位置）
+                if hasattr(connection, 'horizontal_line1') and hasattr(connection, 'vertical_line') and hasattr(connection, 'horizontal_line2'):
+                    self._subtree_drag_edges_snapshot[connection] = {
+                        'h1_start': connection.horizontal_line1.line().p1(),
+                        'h1_end': connection.horizontal_line1.line().p2(),
+                        'v_start': connection.vertical_line.line().p1(),
+                        'v_end': connection.vertical_line.line().p2(),
+                        'h2_start': connection.horizontal_line2.line().p1(),
+                        'h2_end': connection.horizontal_line2.line().p2()
+                    }
+        
+        # サブツリー内のすべての接続線を更新（初期状態を確実にするため）
+        for connection in self.connections:
+            if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                (connection.source in self._subtree_drag_snapshot or 
+                 connection.target in self._subtree_drag_snapshot)):
+                # 接続線の更新メソッドを呼び出し
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+    
+    def update_subtree_drag(self, dx: float, dy: float):
+        """
+        サブツリードラッグ中の位置更新
+        
+        Args:
+            dx: X方向の移動量
+            dy: Y方向の移動量
+        """
+        if not self._subtree_drag_mode:
+            return
+        
+        # 各ノードの位置を更新
+        for node, original_pos in self._subtree_drag_snapshot.items():
+            new_pos = QPointF(original_pos.x() + dx, original_pos.y() + dy)
+            node.setPos(new_pos)
+        
+        # 接続線の制御点を更新
+        for connection, original_points in self._subtree_drag_edges_snapshot.items():
+            if hasattr(connection, 'horizontal_line1') and hasattr(connection, 'vertical_line') and hasattr(connection, 'horizontal_line2'):
+                # 各線分の制御点を平行移動
+                h1_start = QPointF(original_points['h1_start'].x() + dx, original_points['h1_start'].y() + dy)
+                h1_end = QPointF(original_points['h1_end'].x() + dx, original_points['h1_end'].y() + dy)
+                v_start = QPointF(original_points['v_start'].x() + dx, original_points['v_start'].y() + dy)
+                v_end = QPointF(original_points['v_end'].x() + dx, original_points['v_end'].y() + dy)
+                h2_start = QPointF(original_points['h2_start'].x() + dx, original_points['h2_start'].y() + dy)
+                h2_end = QPointF(original_points['h2_end'].x() + dx, original_points['h2_end'].y() + dy)
+                
+                # 線分を更新
+                connection.horizontal_line1.setLine(h1_start.x(), h1_start.y(), h1_end.x(), h1_end.y())
+                connection.vertical_line.setLine(v_start.x(), v_start.y(), v_end.x(), v_end.y())
+                connection.horizontal_line2.setLine(h2_start.x(), h2_start.y(), h2_end.x(), h2_end.y())
+        
+        # サブツリー内のすべての接続線を更新（移動中のノードとその親ノードを繋ぐ接続線を含む）
+        for connection in self.connections:
+            if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                (connection.source in self._subtree_drag_snapshot or 
+                 connection.target in self._subtree_drag_snapshot)):
+                # 接続線の更新メソッドを呼び出し
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+        
+        # シーンの再描画を強制
+        self.scene.update()
+    
+    def end_subtree_drag(self, apply_snap: bool = True):
+        """
+        サブツリードラッグを終了
+        
+        Args:
+            apply_snap: グリッドスナップを適用するかどうか
+        """
+        if not self._subtree_drag_mode:
+            return
+        
+        # グリッドスナップが有効な場合
+        if apply_snap and self.get_grid_snap_enabled():
+            # ルートノードの位置をスナップ
+            original_root_pos = self._subtree_drag_snapshot[self._subtree_drag_root]
+            current_root_pos = self._subtree_drag_root.pos()
+            snapped_root_pos = self.snap_to_grid(current_root_pos)
+            
+            # 最終的な移動量を再計算
+            final_dx = snapped_root_pos.x() - original_root_pos.x()
+            final_dy = snapped_root_pos.y() - original_root_pos.y()
+            
+            # 全ノードと接続線に最終移動量を適用
+            self.update_subtree_drag(final_dx, final_dy)
+        
+        # Undoスタックに追加
+        if self.undo_stack is not None:
+            # 移動前後の位置を記録
+            old_positions = {}
+            new_positions = {}
+            
+            for node, original_pos in self._subtree_drag_snapshot.items():
+                old_positions[node] = original_pos
+                new_positions[node] = node.pos()
+            
+            # Undoコマンドを追加
+            self.undo_stack.push(SubtreeMoveCommand(self, self._subtree_drag_root, old_positions, new_positions, self._subtree_drag_edges_snapshot))
+        
+        # サブツリー内のすべての接続線を最終更新
+        for connection in self.connections:
+            if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                (connection.source in self._subtree_drag_snapshot or 
+                 connection.target in self._subtree_drag_snapshot)):
+                # 接続線の更新メソッドを呼び出し
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+        
+        # 状態をクリア
+        self._subtree_drag_mode = False
+        self._subtree_drag_root = None
+        self._subtree_drag_start_pos = None
+        self._subtree_drag_snapshot.clear()
+        self._subtree_drag_edges_snapshot.clear()
+        
+        # レイアウトの再計算と再描画
+        self.relayout()
+    
     
     def _check_collision(self, bbox: dict, exclude_node: NodeItem = None) -> bool:
         """指定された境界ボックスが他のノードと衝突するかチェック"""
@@ -674,8 +1193,34 @@ class MindMapView(QGraphicsView):
         
         return False
     
-    def _push_down_until_no_collision(self, bbox: dict, step: float = 40.0, exclude_node: NodeItem = None) -> dict:
-        """衝突がなくなるまで下方向にプッシュ"""
+    def check_collision(self, bbox: dict, exclude_node: NodeItem = None) -> bool:
+        """
+        指定された境界ボックスが他のノードと衝突するかチェック
+        
+        Args:
+            bbox: チェックする境界ボックス {x, y, width, height, bottom}
+            exclude_node: 衝突チェックから除外するノード
+            
+        Returns:
+            bool: 衝突がある場合True
+        """
+        return self._check_collision(bbox, exclude_node)
+    
+    def push_down_until_no_collision(self, bbox: dict, step: float = None, exclude_node: NodeItem = None) -> dict:
+        """
+        衝突がなくなるまで下方向にプッシュ
+        
+        Args:
+            bbox: プッシュする境界ボックス
+            step: プッシュするステップサイズ（デフォルト: VERTICAL_GAP）
+            exclude_node: 衝突チェックから除外するノード
+            
+        Returns:
+            dict: プッシュ後の境界ボックス
+        """
+        if step is None:
+            step = self.VERTICAL_GAP
+        
         original_bbox = bbox.copy()
         
         while self._check_collision(bbox, exclude_node):
@@ -684,14 +1229,25 @@ class MindMapView(QGraphicsView):
         
         return bbox
     
-    def _calculate_parent_insert_position(self, reference_parent: NodeItem) -> QPointF:
-        """新しい親ノードの挿入位置を計算（すべての既存親ノードの子ノード群との衝突を考慮）"""
-        # 定数
-        VERTICAL_GAP = 60.0  # 垂直間隔
-        PARENT_COLUMN_OFFSET = 200.0  # 親ノード列のXオフセット
-        NODE_WIDTH = 128.0  # ノードの幅
-        NODE_HEIGHT = 72.0  # ノードの高さ
+    def _push_down_until_no_collision(self, bbox: dict, step: float = 40.0, exclude_node: NodeItem = None) -> dict:
+        """後方互換性のためのエイリアス"""
+        return self.push_down_until_no_collision(bbox, step, exclude_node)
+    
+    def calculate_parent_insert_position(self, reference_parent: NodeItem) -> QPointF:
+        """
+        新しい親ノードの挿入位置を計算
         
+        要求仕様:
+        - Parent1の子ノード群の最下端 + 余白 に Parent2を配置
+        - 既存ノードとの衝突回避
+        - グリッドスナップ対応
+        
+        Args:
+            reference_parent: 参照親ノード（Parent1）
+            
+        Returns:
+            QPointF: 新しい親ノードの配置位置
+        """
         # すべての既存の親ノードを取得
         all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
         all_parent_nodes = self._get_all_parent_nodes(all_nodes)
@@ -699,24 +1255,27 @@ class MindMapView(QGraphicsView):
         # すべての親ノードのサブツリーの最下端を計算
         max_bottom_y = reference_parent.pos().y()  # 初期値は参照親ノードのY座標
         for parent in all_parent_nodes:
-            subtree_bbox = self._get_subtree_bbox(parent, True)
+            subtree_bbox = self.get_subtree_bbox(parent, True)
             max_bottom_y = max(max_bottom_y, subtree_bbox["bottom"])
         
         # 新しい親ノードの配置位置を計算
-        new_parent_x = reference_parent.pos().x() + PARENT_COLUMN_OFFSET
-        new_parent_y = max_bottom_y + VERTICAL_GAP
+        # X座標: 既存の親ノード列のX位置（Parent1と同じ列 or 右の親列）
+        new_parent_x = reference_parent.pos().x() + self.PARENT_COLUMN_OFFSET
+        
+        # Y座標: すべての親ノードのサブツリーの最下端 + 垂直ギャップ
+        new_parent_y = max_bottom_y + self.VERTICAL_GAP
         
         # 新しい親ノードの境界ボックスを作成
         new_parent_bbox = {
             "x": new_parent_x,
             "y": new_parent_y,
-            "width": NODE_WIDTH,
-            "height": NODE_HEIGHT,
-            "bottom": new_parent_y + NODE_HEIGHT
+            "width": self.NODE_WIDTH,
+            "height": self.NODE_HEIGHT,
+            "bottom": new_parent_y + self.NODE_HEIGHT
         }
         
-        # 最終的な衝突回避（他のノードとの重なりをチェック）
-        final_bbox = self._push_down_until_no_collision(new_parent_bbox)
+        # 既存ノードとの衝突回避
+        final_bbox = self.push_down_until_no_collision(new_parent_bbox)
         
         # グリッドスナップが有効な場合は適用
         if self.get_grid_snap_enabled():
@@ -724,6 +1283,28 @@ class MindMapView(QGraphicsView):
             return snapped_pos
         
         return QPointF(final_bbox["x"], final_bbox["y"])
+    
+    def _calculate_parent_insert_position(self, reference_parent: NodeItem) -> QPointF:
+        """後方互換性のためのエイリアス"""
+        return self.calculate_parent_insert_position(reference_parent)
+    
+    def relayout(self):
+        """
+        レイアウトの再計算と再描画
+        
+        ノード追加・移動後にコネクタの再計算と再描画を行う
+        """
+        # すべての接続線を更新
+        for connection in self.connections:
+            if hasattr(connection, 'update_connection'):
+                connection.update_connection()
+        
+        # シーンの再描画
+        self.scene.update()
+        
+        # オートフィットが有効な場合は自動的にフィット
+        if self.auto_fit_enabled:
+            self.fit_all_nodes()
     
     def _get_all_parent_nodes(self, all_nodes: list[NodeItem]) -> list[NodeItem]:
         """すべての親ノードを取得（中心ノードとその他の親ノード）"""
@@ -952,3 +1533,120 @@ class MindMapView(QGraphicsView):
         
         except Exception as e:
             print(f"JSONインポートエラー: {e}")
+    
+    def _check_node_collision(self, node: 'NodeItem', target_pos: QPointF) -> bool:
+        """ノードの衝突をチェック"""
+        target_rect = QRectF(target_pos.x() - node.boundingRect().width()/2,
+                           target_pos.y() - node.boundingRect().height()/2,
+                           node.boundingRect().width(),
+                           node.boundingRect().height())
+
+        # 他のノードとの衝突チェック（ノード同士の重なりを防ぐ）
+        for item in self.scene.items():
+            if isinstance(item, NodeItem) and item != node:
+                item_rect = item.sceneBoundingRect()
+                # ノード同士の重なりを防ぐため、適度なマージンを設ける
+                margin = 5  # ノード間の最小距離
+                expanded_rect = QRectF(item_rect.x() - margin, item_rect.y() - margin,
+                                     item_rect.width() + 2*margin, item_rect.height() + 2*margin)
+                if target_rect.intersects(expanded_rect):
+                    return True
+        
+        # 自身の接続線（縦線）上への配置を禁止（X軸方向のみ判定）
+        if self._check_own_vertical_line_overlap(node, target_rect):
+            return True
+
+        # 接続線との一般的な衝突チェックは無効化（Y軸方向の移動を自由にするため）
+        return False
+
+    def _check_own_vertical_line_overlap(self, node: 'NodeItem', target_rect: QRectF) -> bool:
+        """自身に接続しているCrankConnectionのvertical_line上に重なるか（X軸のみ）"""
+        try:
+            margin = 3  # 最小限の許容幅
+            for connection in self.connections:
+                if not (hasattr(connection, 'source') and hasattr(connection, 'target')):
+                    continue
+                if connection.source is not node and connection.target is not node:
+                    continue
+                if not hasattr(connection, 'vertical_line') or not connection.vertical_line:
+                    continue
+                line = connection.vertical_line.line()
+                line_x = line.x1()
+                # ノード矩形が縦線のX位置に被っているか（Y方向は自由）
+                if (target_rect.left() <= line_x + margin and
+                    target_rect.right() >= line_x - margin):
+                    return True
+            return False
+        except Exception as e:
+            print(f"_check_own_vertical_line_overlap エラー: {e}")
+            return False
+
+    def _check_connection_line_collision(self, node: 'NodeItem', target_rect: QRectF) -> bool:
+        """接続線との衝突をチェック（X軸方向のみ、Y軸方向は完全に自由）"""
+        for connection in self.connections:
+            if hasattr(connection, 'vertical_line') and connection.vertical_line:
+                # 垂直線の位置を取得
+                line = connection.vertical_line.line()
+                # X軸方向のみの衝突チェック（Y軸方向は完全に自由）
+                margin = 1  # X軸方向のマージンを最小限に
+                line_x = line.x1()
+                
+                # ノードが垂直線のX軸位置と重なる場合のみ衝突とみなす
+                # Y軸方向の重なりは完全に無視
+                if (target_rect.left() <= line_x + margin and 
+                    target_rect.right() >= line_x - margin):
+                    return True
+                    
+            # horizontal_line2との衝突もチェック（X軸方向のみ）
+            if hasattr(connection, 'horizontal_line2') and connection.horizontal_line2:
+                line2 = connection.horizontal_line2.line()
+                # X軸方向のみの衝突チェック
+                margin = 1
+                line2_x_start = min(line2.x1(), line2.x2())
+                line2_x_end = max(line2.x1(), line2.x2())
+                
+                # ノードが水平線2のX軸範囲と重なる場合のみ衝突とみなす
+                # Y軸方向の重なりは完全に無視
+                if (target_rect.left() <= line2_x_end + margin and 
+                    target_rect.right() >= line2_x_start - margin):
+                    return True
+        return False
+
+    def _check_subtree_collision(self, root_node: 'NodeItem') -> bool:
+        """サブツリー（ルート＋子孫）いずれかが他ノードに重なるかチェック"""
+        try:
+            # サブツリー対象ノード集合
+            subtree_nodes = [root_node]
+            for n in self.get_descendants(root_node):
+                subtree_nodes.append(n)
+
+            # 各サブツリーノードの現在矩形
+            current_rects = {
+                n: QRectF(
+                    n.pos().x() - n.boundingRect().width() / 2.0,
+                    n.pos().y() - n.boundingRect().height() / 2.0,
+                    n.boundingRect().width(),
+                    n.boundingRect().height(),
+                ) for n in subtree_nodes
+            }
+
+            # 他ノードとの衝突検出（適度なマージン）
+            margin = 5
+            for item in self.scene.items():
+                from node import NodeItem  # 遅延インポート
+                if isinstance(item, NodeItem) and item not in subtree_nodes:
+                    item_rect = item.sceneBoundingRect()
+                    expanded_rect = QRectF(
+                        item_rect.x() - margin,
+                        item_rect.y() - margin,
+                        item_rect.width() + 2 * margin,
+                        item_rect.height() + 2 * margin,
+                    )
+                    # サブツリーノードのいずれかが重なれば衝突
+                    for n, r in current_rects.items():
+                        if r.intersects(expanded_rect):
+                            return True
+            return False
+        except Exception as e:
+            print(f"_check_subtree_collision エラー: {e}")
+            return False

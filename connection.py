@@ -78,6 +78,19 @@ class CrankConnection:
         # 垂直線のX位置を統一
         vertical_x = self._get_unified_vertical_x_position()
         
+        # horizontal_line2が必ず右方向（プラス方向）に向くように調整
+        # ターゲットが垂直線より左にある場合は、ターゲットの右端を使用
+        if end_x < vertical_x:
+            end_x = target_rect.right()
+        
+        # さらに、horizontal_line2の終点が垂直線より右にあることを保証
+        if end_x <= vertical_x:
+            end_x = vertical_x + 30  # 最小距離を確保（20pxから30pxに増加）
+        
+        # 最終的な方向チェック：horizontal_line2が左向きにならないように
+        if end_x < vertical_x:
+            end_x = vertical_x + 30
+        
         # 3段階の線を設定
         self.horizontal_line1.setLine(start_x, start_y, vertical_x, start_y)
         self.vertical_line.setLine(vertical_x, start_y, vertical_x, end_y)

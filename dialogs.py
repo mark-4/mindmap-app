@@ -95,13 +95,26 @@ class TransparencyDialog(QDialog):
     - get_transparency(): 設定された透明度の取得
     """
     
-    def __init__(self, parent=None, bg_transparency=1.0, node_transparency=1.0, line_transparency=1.0):
+    def __init__(self, parent=None, bg_transparency=1.0, node_transparency=1.0, line_transparency=1.0, window_transparency=1.0):
         super().__init__(parent)
         self.setWindowTitle("透明度設定")
         self.setModal(True)
-        self.resize(400, 300)
+        self.resize(400, 350)
         
         layout = QVBoxLayout()
+        
+        # ウィンドウ全体の透明度
+        window_layout = QHBoxLayout()
+        window_layout.addWidget(QLabel("ウィンドウ透明度:"))
+        self.window_slider = QSlider(Qt.Horizontal)
+        self.window_slider.setMinimum(10)
+        self.window_slider.setMaximum(100)
+        self.window_slider.setValue(int(window_transparency * 100))
+        self.window_slider.valueChanged.connect(self._on_window_slider_changed)
+        window_layout.addWidget(self.window_slider)
+        self.window_label = QLabel(f"{int(window_transparency * 100)}%")
+        window_layout.addWidget(self.window_label)
+        layout.addLayout(window_layout)
         
         # 背景透明度
         bg_layout = QHBoxLayout()
@@ -120,7 +133,7 @@ class TransparencyDialog(QDialog):
         node_layout = QHBoxLayout()
         node_layout.addWidget(QLabel("ノード透明度:"))
         self.node_slider = QSlider(Qt.Horizontal)
-        self.node_slider.setMinimum(10)
+        self.node_slider.setMinimum(0)
         self.node_slider.setMaximum(100)
         self.node_slider.setValue(int(node_transparency * 100))
         self.node_slider.valueChanged.connect(self._on_node_slider_changed)
@@ -128,6 +141,11 @@ class TransparencyDialog(QDialog):
         self.node_label = QLabel(f"{int(node_transparency * 100)}%")
         node_layout.addWidget(self.node_label)
         layout.addLayout(node_layout)
+        
+        # ノード透明度の説明
+        node_info = QLabel("※ 0%: 完全透明, 100%: 完全不透明")
+        node_info.setStyleSheet("color: gray; font-size: 10px;")
+        layout.addWidget(node_info)
         
         # 接続線透明度
         line_layout = QHBoxLayout()
@@ -155,6 +173,10 @@ class TransparencyDialog(QDialog):
         layout.addLayout(button_layout)
         self.setLayout(layout)
     
+    def _on_window_slider_changed(self, value):
+        """ウィンドウ透明度スライダー変更"""
+        self.window_label.setText(f"{value}%")
+    
     def _on_bg_slider_changed(self, value):
         """背景透明度スライダー変更"""
         self.bg_label.setText(f"{value}%")
@@ -166,6 +188,10 @@ class TransparencyDialog(QDialog):
     def _on_line_slider_changed(self, value):
         """接続線透明度スライダー変更"""
         self.line_label.setText(f"{value}%")
+    
+    def get_window_transparency(self):
+        """ウィンドウ透明度を取得"""
+        return self.window_slider.value() / 100.0
     
     def get_background_transparency(self):
         """背景透明度を取得"""
