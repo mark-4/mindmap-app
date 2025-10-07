@@ -198,10 +198,9 @@ class NodeItem(QGraphicsRectItem):
                 if snapped_pos != self.pos():
                     self.setPos(snapped_pos)
             
-            # 親距離を使わない「縦レーン」割り込み
+            # ノードの種類に関係なく「縦レーン」割り込みを適用
             lane_insert, lane_nodes, lane_index = self._view._check_lane_insertion(self, self.pos())
             if lane_insert:
-                # 現在のレーンにドラッグ中ノードを挿入して等間隔再配置
                 nodes_with_dragged = lane_nodes.copy()
                 nodes_with_dragged.insert(lane_index, self)
                 self._view._reposition_lane_nodes(nodes_with_dragged)

@@ -1,0 +1,1136 @@
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(NoModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ShiftModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ControlModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ShiftModifier|ControlModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(AltModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ShiftModifier|AltModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ControlModifier|AltModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ShiftModifier|ControlModifier|AltModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ShiftModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ControlModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ShiftModifier|ControlModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(AltModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ShiftModifier|AltModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ControlModifier|AltModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x9' for virtual key 48 with QFlags<Qt::KeyboardModifier>(ShiftModifier|ControlModifier|AltModifier|MetaModifier)
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    self.view._reposition_affected_parent_nodes(self.node, self.parent_node)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    self.view._reposition_affected_parent_nodes(self.node, self.parent_node)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    self.view._reposition_affected_parent_nodes(self.node, self.parent_node)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    self.view._reposition_affected_parent_nodes(self.node, self.parent_node)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    self.view._reposition_affected_parent_nodes(self.node, self.parent_node)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    self.view._reposition_affected_parent_nodes(self.node, self.parent_node)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    self.view._reposition_affected_parent_nodes(self.node, self.parent_node)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(NoModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ShiftModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ControlModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ShiftModifier|ControlModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(AltModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ShiftModifier|AltModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ControlModifier|AltModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ShiftModifier|ControlModifier|AltModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ShiftModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ControlModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ShiftModifier|ControlModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(AltModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ShiftModifier|AltModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ControlModifier|AltModifier|MetaModifier)
+qt.qpa.keymapper: Mismatch between Cocoa '\x0' and Carbon '\x8' for virtual key 51 with QFlags<Qt::KeyboardModifier>(ShiftModifier|ControlModifier|AltModifier|MetaModifier)
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 1
+
+  Node at (-119.0, -100.0)
+Center node found: (-119.0, -100.0)
+Child nodes of center: 0
+Treating child nodes as parent nodes for positioning calculation
+Total parent nodes found: 1
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-119.0, -100.0)
+Initial position: (51.0, -100.0)
+Found 1 parent nodes
+
+Initial max_bottom_y: -100.0
+Skipping same parent: (-119.0, -100.0)
+Final max_bottom_y: -100.0
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 2
+
+  Node at (51.0, -100.0)
+  Node at (-119.0, -100.0)
+Center node found: (-119.0, -100.0)
+Child nodes of center: 1
+  Child: (51.0, -100.0)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (51.0, -100.0)
+Total parent nodes found: 2
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(51.0, -100.0)
+Initial position: (221.0, -100.0)
+Found 2 parent nodes
+
+Initial max_bottom_y: -100.0
+Parent -119.0,-100.0 subtree bbox: {'x': -119.0, 'y': -100.0, 'width': 298.0, 'height': 72.0, 'bottom': -28.0}
+  X overlap check: new_x=221.0, subtree_x=-119.0, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-119.0, -100.0)
+Skipping same parent: (51.0, -100.0)
+Final max_bottom_y: -100.0
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 3
+
+  Node at (221.0, -100.0)
+  Node at (51.0, -100.0)
+  Node at (-119.0, -100.0)
+Center node found: (-119.0, -100.0)
+Child nodes of center: 1
+  Child: (51.0, -100.0)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (51.0, -100.0)
+Total parent nodes found: 2
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(51.0, -100.0)
+Initial position: (221.0, 0.0)
+Found 2 parent nodes
+
+Initial max_bottom_y: 0.0
+Parent -119.0,-100.0 subtree bbox: {'x': -119.0, 'y': -100.0, 'width': 468.0, 'height': 72.0, 'bottom': -28.0}
+  X overlap check: new_x=221.0, subtree_x=-119.0, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 0.0 to 32.0 ***
+Skipping same parent: (51.0, -100.0)
+Final max_bottom_y: 32.0
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 4
+
+  Node at (221.0, 32.0)
+  Node at (221.0, -100.0)
+  Node at (51.0, -100.0)
+  Node at (-119.0, -100.0)
+Center node found: (-119.0, -100.0)
+Child nodes of center: 1
+  Child: (51.0, -100.0)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (51.0, -100.0)
+Total parent nodes found: 2
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(51.0, -100.0)
+Initial position: (221.0, 132.0)
+Found 2 parent nodes
+
+Initial max_bottom_y: 132.0
+Parent -119.0,-100.0 subtree bbox: {'x': -119.0, 'y': -100.0, 'width': 468.0, 'height': 204.0, 'bottom': 104.0}
+  X overlap check: new_x=221.0, subtree_x=-119.0, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 132.0 to 164.0 ***
+Skipping same parent: (51.0, -100.0)
+Final max_bottom_y: 164.0
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 5
+
+  Node at (221.0, 164.0)
+  Node at (221.0, 32.0)
+  Node at (221.0, -100.0)
+  Node at (51.0, -100.0)
+  Node at (-119.0, -100.0)
+Center node found: (-119.0, -100.0)
+Child nodes of center: 1
+  Child: (51.0, -100.0)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (51.0, -100.0)
+Total parent nodes found: 2
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-119.0, -100.0)
+Initial position: (51.0, 0.0)
+Found 2 parent nodes
+
+Initial max_bottom_y: 0.0
+Skipping same parent: (-119.0, -100.0)
+Parent 51.0,-100.0 subtree bbox: {'x': 51.0, 'y': -100.0, 'width': 298.0, 'height': 336.0, 'bottom': 236.0}
+  X overlap check: new_x=51.0, subtree_x=51.0, subtree_width=298.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 0.0 to 296.0 ***
+Final max_bottom_y: 296.0
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 6
+
+  Node at (-148.4, 175.3)
+  Node at (21.6, 43.3)
+  Node at (21.6, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, 175.3)
+Initial position: (21.6, 175.3)
+Found 3 parent nodes
+
+Initial max_bottom_y: 175.3
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 468.0, 'bottom': 247.31856875000003}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 175.3 to 307.3 ***
+Skipping same parent: (-148.4, 175.3)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 336.0, 'bottom': 115.31856875000005}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 307.3 to 307.3 ***
+Final max_bottom_y: 307.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 7
+
+  Node at (21.6, 307.3)
+  Node at (-148.4, 175.3)
+  Node at (21.6, 43.3)
+  Node at (21.6, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, 175.3)
+Initial position: (21.6, 407.3)
+Found 3 parent nodes
+
+Initial max_bottom_y: 407.3
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 600.0, 'bottom': 379.31856875000005}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 407.3 to 439.3 ***
+Skipping same parent: (-148.4, 175.3)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 336.0, 'bottom': 115.31856875000005}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 439.3 to 439.3 ***
+Final max_bottom_y: 439.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 8
+
+  Node at (21.6, 439.3)
+  Node at (21.6, 307.3)
+  Node at (-148.4, 175.3)
+  Node at (21.6, 43.3)
+  Node at (21.6, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(21.6, 43.3)
+Initial position: (191.6, 43.3)
+Found 3 parent nodes
+
+Initial max_bottom_y: 43.3
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 732.0, 'bottom': 511.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-318.4, subtree_width=468.0
+  X overlap result: False
+  No collision with parent at (-318.4, -220.7)
+Parent -148.4,175.3 subtree bbox: {'x': -148.3867124999999, 'y': 175.31856875000003, 'width': 298.0, 'height': 336.0, 'bottom': 511.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-148.4, 175.3)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 336.0, 'bottom': 115.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-148.4, -220.7)
+Final max_bottom_y: 43.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 9
+
+  Node at (191.6, 43.3)
+  Node at (21.6, 439.3)
+  Node at (21.6, 307.3)
+  Node at (-148.4, 175.3)
+  Node at (21.6, 43.3)
+  Node at (21.6, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(21.6, -88.7)
+Initial position: (191.6, -88.7)
+Found 3 parent nodes
+
+Initial max_bottom_y: -88.7
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 638.0, 'height': 732.0, 'bottom': 511.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-318.4, subtree_width=638.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from -88.7 to 571.3 ***
+Parent -148.4,175.3 subtree bbox: {'x': -148.3867124999999, 'y': 175.31856875000003, 'width': 298.0, 'height': 336.0, 'bottom': 511.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-148.4, 175.3)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 336.0, 'bottom': 115.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 571.3 to 571.3 ***
+Final max_bottom_y: 571.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 10
+
+  Node at (191.6, 571.3)
+  Node at (191.6, 43.3)
+  Node at (21.6, 439.3)
+  Node at (21.6, 307.3)
+  Node at (-148.4, 175.3)
+  Node at (21.6, 43.3)
+  Node at (21.6, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(21.6, -220.7)
+Initial position: (191.6, -220.7)
+Found 3 parent nodes
+
+Initial max_bottom_y: -220.7
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 638.0, 'height': 864.0, 'bottom': 643.31856875}
+  X overlap check: new_x=191.6, subtree_x=-318.4, subtree_width=638.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from -220.7 to 703.3 ***
+Parent -148.4,175.3 subtree bbox: {'x': -148.3867124999999, 'y': 175.31856875000003, 'width': 298.0, 'height': 336.0, 'bottom': 511.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-148.4, 175.3)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 864.0, 'bottom': 643.31856875}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 703.3 to 703.3 ***
+Final max_bottom_y: 703.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 7
+
+  Node at (191.6, 43.3)
+  Node at (-148.4, 175.3)
+  Node at (21.6, 43.3)
+  Node at (21.6, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, 175.3)
+Initial position: (21.6, 175.3)
+Found 3 parent nodes
+
+Initial max_bottom_y: 175.3
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 638.0, 'height': 468.0, 'bottom': 247.31856875000003}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=638.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 175.3 to 307.3 ***
+Skipping same parent: (-148.4, 175.3)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 336.0, 'bottom': 115.31856875000005}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 307.3 to 307.3 ***
+Final max_bottom_y: 307.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 3
+
+  Node at (-148.4, 175.3)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, -220.7)
+Initial position: (21.6, -220.7)
+Found 3 parent nodes
+
+Initial max_bottom_y: -220.7
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 468.0, 'bottom': 247.31856875000003}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-318.4, -220.7)
+Parent -148.4,175.3 subtree bbox: {'x': -148.3867124999999, 'y': 175.31856875000003, 'width': 128.0, 'height': 72.0, 'bottom': 247.31856875000003}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=128.0
+  X overlap result: False
+  No collision with parent at (-148.4, 175.3)
+Skipping same parent: (-148.4, -220.7)
+Final max_bottom_y: -220.7
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 4
+
+  Node at (21.6, -220.7)
+  Node at (-148.4, 175.3)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, -220.7)
+Initial position: (21.6, -120.7)
+Found 3 parent nodes
+
+Initial max_bottom_y: -120.7
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 468.0, 'bottom': 247.31856875000003}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from -120.7 to 307.3 ***
+Parent -148.4,175.3 subtree bbox: {'x': -148.3867124999999, 'y': 175.31856875000003, 'width': 128.0, 'height': 72.0, 'bottom': 247.31856875000003}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=128.0
+  X overlap result: False
+  No collision with parent at (-148.4, 175.3)
+Skipping same parent: (-148.4, -220.7)
+Final max_bottom_y: 307.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 4
+
+  Node at (21.6, -220.7)
+  Node at (-148.4, 175.3)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, 175.3)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, 175.3)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, 175.3)
+Initial position: (21.6, 175.3)
+Found 3 parent nodes
+
+Initial max_bottom_y: 175.3
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 468.0, 'bottom': 247.31856875000003}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 175.3 to 307.3 ***
+Skipping same parent: (-148.4, 175.3)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 72.0, 'bottom': -148.68143124999995}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 307.3 to 307.3 ***
+Final max_bottom_y: 307.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 3
+
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 1
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 2
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-318.4, -220.7)
+Initial position: (-148.4, -120.7)
+Found 2 parent nodes
+
+Initial max_bottom_y: -120.7
+Skipping same parent: (-318.4, -220.7)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 72.0, 'bottom': -148.68143124999995}
+  X overlap check: new_x=-148.4, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from -120.7 to -88.7 ***
+Final max_bottom_y: -88.7
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 4
+
+  Node at (-148.4, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, -88.7)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, -88.7)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, -88.7)
+Initial position: (21.6, -88.7)
+Found 3 parent nodes
+
+Initial max_bottom_y: -88.7
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 204.0, 'bottom': -16.681431249999946}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from -88.7 to 43.3 ***
+Skipping same parent: (-148.4, -88.7)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 72.0, 'bottom': -148.68143124999995}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 43.3 to 43.3 ***
+Final max_bottom_y: 43.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 5
+
+  Node at (21.6, 43.3)
+  Node at (-148.4, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, -88.7)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, -88.7)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, -88.7)
+Initial position: (21.6, 143.3)
+Found 3 parent nodes
+
+Initial max_bottom_y: 143.3
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 336.0, 'bottom': 115.31856875000005}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 143.3 to 175.3 ***
+Skipping same parent: (-148.4, -88.7)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 72.0, 'bottom': -148.68143124999995}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 175.3 to 175.3 ***
+Final max_bottom_y: 175.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 6
+
+  Node at (21.6, 175.3)
+  Node at (21.6, 43.3)
+  Node at (-148.4, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, -88.7)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, -88.7)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(21.6, -220.7)
+Initial position: (191.6, -220.7)
+Found 3 parent nodes
+
+Initial max_bottom_y: -220.7
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 468.0, 'bottom': 247.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-318.4, subtree_width=468.0
+  X overlap result: False
+  No collision with parent at (-318.4, -220.7)
+Parent -148.4,-88.7 subtree bbox: {'x': -148.38671249999987, 'y': -88.68143124999995, 'width': 298.0, 'height': 336.0, 'bottom': 247.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-148.4, -88.7)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 298.0, 'height': 72.0, 'bottom': -148.68143124999995}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-148.4, -220.7)
+Final max_bottom_y: -220.7
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 7
+
+  Node at (191.6, -220.7)
+  Node at (21.6, 175.3)
+  Node at (21.6, 43.3)
+  Node at (-148.4, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, -88.7)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, -88.7)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(-148.4, -88.7)
+Initial position: (21.6, 275.3)
+Found 3 parent nodes
+
+Initial max_bottom_y: 275.3
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 638.0, 'height': 468.0, 'bottom': 247.31856875000005}
+  X overlap check: new_x=21.6, subtree_x=-318.4, subtree_width=638.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 275.3 to 307.3 ***
+Skipping same parent: (-148.4, -88.7)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 72.0, 'bottom': -148.68143124999995}
+  X overlap check: new_x=21.6, subtree_x=-148.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 307.3 to 307.3 ***
+Final max_bottom_y: 307.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 8
+
+  Node at (21.6, 307.3)
+  Node at (191.6, -220.7)
+  Node at (21.6, 175.3)
+  Node at (21.6, 43.3)
+  Node at (-148.4, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, -88.7)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, -88.7)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(21.6, -220.7)
+Initial position: (191.6, -120.7)
+Found 3 parent nodes
+
+Initial max_bottom_y: -120.7
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 638.0, 'height': 600.0, 'bottom': 379.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-318.4, subtree_width=638.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from -120.7 to 439.3 ***
+Parent -148.4,-88.7 subtree bbox: {'x': -148.38671249999987, 'y': -88.68143124999995, 'width': 298.0, 'height': 468.0, 'bottom': 379.31856875000005}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-148.4, -88.7)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 72.0, 'bottom': -148.68143124999995}
+  X overlap check: new_x=191.6, subtree_x=-148.4, subtree_width=468.0
+  X overlap result: True
+  *** COLLISION DETECTED! Adjusting Y from 439.3 to 439.3 ***
+Final max_bottom_y: 439.3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 9
+
+  Node at (191.6, 439.3)
+  Node at (21.6, 307.3)
+  Node at (190.4, -220.7)
+  Node at (21.6, 175.3)
+  Node at (21.6, 43.3)
+  Node at (-148.4, -88.7)
+  Node at (21.6, -220.7)
+  Node at (-148.4, -220.7)
+  Node at (-318.4, -220.7)
+Center node found: (-318.4, -220.7)
+Child nodes of center: 2
+  Child: (-148.4, -88.7)
+  Child: (-148.4, -220.7)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-148.4, -88.7)
+  Added child as parent: (-148.4, -220.7)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Smart Position Calculation
+============================================================
+Parent node: pos=(190.4, -220.7)
+Initial position: (360.4, -220.7)
+Found 3 parent nodes
+
+Initial max_bottom_y: -220.7
+Parent -318.4,-220.7 subtree bbox: {'x': -318.3867124999999, 'y': -220.68143124999995, 'width': 638.0, 'height': 732.0, 'bottom': 511.31856875000005}
+  X overlap check: new_x=360.4, subtree_x=-318.4, subtree_width=638.0
+  X overlap result: False
+  No collision with parent at (-318.4, -220.7)
+Parent -148.4,-88.7 subtree bbox: {'x': -148.38671249999987, 'y': -88.68143124999995, 'width': 298.0, 'height': 468.0, 'bottom': 379.31856875000005}
+  X overlap check: new_x=360.4, subtree_x=-148.4, subtree_width=298.0
+  X overlap result: False
+  No collision with parent at (-148.4, -88.7)
+Parent -148.4,-220.7 subtree bbox: {'x': -148.3867124999999, 'y': -220.68143124999995, 'width': 468.0, 'height': 732.0, 'bottom': 511.31856875000005}
+  X overlap check: new_x=360.4, subtree_x=-148.4, subtree_width=468.0
+  X overlap result: False
+  No collision with parent at (-148.4, -220.7)
+Final max_bottom_y: -220.7
+=== END DEBUG ===
+
+
+============================================================
+DEBUG: Finding Parent Nodes
+============================================================
+Total nodes: 10
+
+  Node at (424.1, -306.0)
+  Node at (255.3, 354.0)
+  Node at (88.5, 91.0)
+  Node at (254.1, -306.0)
+  Node at (88.5, -41.0)
+  Node at (88.5, -173.0)
+  Node at (-84.7, -174.0)
+  Node at (85.3, -306.0)
+  Node at (-84.7, -306.0)
+  Node at (-254.7, -306.0)
+Center node found: (-254.7, -306.0)
+Child nodes of center: 2
+  Child: (-84.7, -174.0)
+  Child: (-84.7, -306.0)
+Treating child nodes as parent nodes for positioning calculation
+  Added child as parent: (-84.7, -174.0)
+  Added child as parent: (-84.7, -306.0)
+Total parent nodes found: 3
+=== END DEBUG ===
+
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'
+Traceback (most recent call last):
+  File "/Users/macbookpro14/maps/maps/main.py", line 182, in _add_node
+    self.undo_stack.push(AddNodeCommand(self.view, "新規ノード", parent_node, new_pos, is_parent_node))
+  File "/Users/macbookpro14/maps/maps/commands.py", line 27, in redo
+    def undo(self):
+            ^^^^^^^^
+AttributeError: Error calling Python override of QUndoCommand::redo(): 'MindMapView' object has no attribute '_reposition_affected_parent_nodes'

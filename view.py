@@ -4,6 +4,7 @@
 import json
 import random
 import math
+from node import NodeItem
 from PySide6.QtCore import QRectF, QPointF, Qt, QTimer
 from PySide6.QtGui import (
     QBrush,
@@ -544,13 +545,15 @@ class MindMapView(QGraphicsView):
                     self._multi_move_start_positions[node] = node.pos()
         
         # Shiftキーを押しながらのクリックでのみ接続モードを有効にする
-        if event.button() == Qt.LeftButton and event.modifiers() & Qt.ShiftModifier:
+        if event.button() == Qt.LeftButton and (event.modifiers() & Qt.ShiftModifier):
             clicked_item = self.itemAt(event.pos())
             if isinstance(clicked_item, NodeItem):
                 if self.pending_source_node is None:
+                    # 接続の始点を設定
                     self.pending_source_node = clicked_item
                     clicked_item.setSelected(True)
                 else:
+                    # 接続の終点を設定し、エッジ作成
                     if clicked_item is not self.pending_source_node:
                         if self.undo_stack is not None:
                             self.undo_stack.push(ConnectNodesCommand(self, self.pending_source_node, clicked_item))
@@ -638,8 +641,6 @@ class MindMapView(QGraphicsView):
             self._is_multi_move_in_progress = False
             return
         
-        # ローカルでNodeItemをインポート（内包表記内で参照可能にする）
-        from node import NodeItem
         selected_nodes = [item for item in self.scene.selectedItems() if isinstance(item, NodeItem)]
         
         if len(selected_nodes) <= 1:
@@ -695,7 +696,7 @@ class MindMapView(QGraphicsView):
                             )
                             if n_rect.intersects(expanded_rect):
                                 collision_detected = True
-                                break
+                    break
                     if collision_detected:
                         break
             except Exception as e:
@@ -715,7 +716,7 @@ class MindMapView(QGraphicsView):
             self._is_multi_move_in_progress = False
             self._multi_move_start_positions.clear()
             return
-
+        
         # 移動があった場合のみUndoスタックに追加（衝突が無い場合）
         if has_movement and self.undo_stack is not None and not self._is_multi_move_undo_pending:
             print(f"複数ノード移動Undoコマンドをプッシュ: {len(selected_nodes)}個のノード")
@@ -1545,8 +1546,8 @@ class MindMapView(QGraphicsView):
         for item in self.scene.items():
             if isinstance(item, NodeItem) and item != node:
                 item_rect = item.sceneBoundingRect()
-                # ノード同士の重なりを防ぐため、適度なマージンを設ける
-                margin = 5  # ノード間の最小距離
+                # ノード同士の重なりを防ぐための弾き幅
+                margin = 5  # 弾き幅=5px
                 expanded_rect = QRectF(item_rect.x() - margin, item_rect.y() - margin,
                                      item_rect.width() + 2*margin, item_rect.height() + 2*margin)
                 if target_rect.intersects(expanded_rect):
@@ -1688,7 +1689,7 @@ class MindMapView(QGraphicsView):
                     
         except Exception as e:
             print(f"_reposition_child_nodes エラー: {e}")
-
+    
     def _check_lane_insertion(self, dragged_node: 'NodeItem', target_pos: QPointF) -> tuple[bool, list, int]:
         """縦レーン内への割り込み挿入を判定（親距離を使わない）
         Returns: (should_insert, lane_nodes, insert_index)
@@ -1696,25 +1697,19 @@ class MindMapView(QGraphicsView):
         try:
             from node import NodeItem
             lane_width = 60.0  # ドロップX±lane_width内を同じ縦レーンとみなす
-            # 候補ノード（ドラッグ中以外）
             candidates = [item for item in self.scene.items() if isinstance(item, NodeItem) and item is not dragged_node]
             if not candidates:
                 return False, [], 0
-            # 近傍Xにあるノードを抽出
             lane_nodes = [n for n in candidates if abs(n.pos().x() - target_pos.x()) <= lane_width]
             if not lane_nodes:
                 return False, [], 0
-            # Y昇順で並べる
             lane_nodes.sort(key=lambda n: n.pos().y())
-            # 中点境界で挿入位置を決める
             if len(lane_nodes) == 1:
                 insert_index = 0 if target_pos.y() <= lane_nodes[0].pos().y() else 1
                 return True, lane_nodes, insert_index
-            # 中点群
             midpoints = []
             for i in range(len(lane_nodes) - 1):
                 midpoints.append((lane_nodes[i].pos().y() + lane_nodes[i+1].pos().y()) / 2.0)
-            # 先頭・末尾の外側も考慮
             if target_pos.y() < midpoints[0]:
                 return True, lane_nodes, 0
             for i in range(len(midpoints)-1):
@@ -1726,26 +1721,103 @@ class MindMapView(QGraphicsView):
             return False, [], 0
 
     def _reposition_lane_nodes(self, lane_nodes_with_dragged: list['NodeItem']) -> None:
-        """縦レーンのノード群を等間隔で再配置（Xは各ノードの現在位置を維持）"""
+        """縦レーンのノード群を必要最小限だけ下に押し下げて非重なり化（最小ギャップ=5px、Xは維持）。
+
+        等間隔で広げず、先頭ノードのYをアンカーにし、以降のノードは
+        直前ノードの下端+最小ギャップを下回るときだけ下方向へ補正します。
+        これにより「割り込み」と「寄せ」を両立します。
+        """
         try:
             if not lane_nodes_with_dragged:
                 return
-            # Y昇順で並び替えた上で中心基準に等間隔配置
+            # Y昇順に並び替え（先頭＝最上位ノード）
             lane_nodes_with_dragged.sort(key=lambda n: n.pos().y())
-            spacing = 80.0
-            # 中央を現状の中央値に近づける
-            ys = [n.pos().y() for n in lane_nodes_with_dragged]
-            center_y = sum(ys) / len(ys)
-            start_y = center_y - (len(lane_nodes_with_dragged)-1) * spacing / 2.0
-            for i, n in enumerate(lane_nodes_with_dragged):
-                n.setPos(n.pos().x(), start_y + i * spacing)
+
+            min_gap = 5.0
+
+            # 先頭ノードはそのまま（必要ならドラッグにより既に近接している前提）
+            first = lane_nodes_with_dragged[0]
+            prev_center_y = first.pos().y()
+            prev_h = first.boundingRect().height()
+            prev_bottom = prev_center_y + prev_h / 2.0
+
+            # 2番目以降：必要最小限の下方向補正のみ行う
+            for n in lane_nodes_with_dragged[1:]:
+                cur_center_y = n.pos().y()
+                cur_h = n.boundingRect().height()
+                cur_top = cur_center_y - cur_h / 2.0
+
+                required_top = prev_bottom + min_gap
+                # 要求上端より上にある場合のみ押し下げる（上方向への引き寄せは維持）
+                if cur_top < required_top:
+                    dy = (required_top - cur_top)
+                    self._translate_subtree_vertical(n, dy)
+                    # 補正後に中心Yを更新
+                    cur_center_y = n.pos().y()
+                    cur_top = cur_center_y - cur_h / 2.0
+
+                # 次の比較用に更新
+                prev_bottom = cur_top + cur_h
+
+            # 接続線更新とシーン更新
+            for connection in self.connections:
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+            self.scene.update()
+
+            # サブツリー間の最小ギャップも5pxで正規化（必要最小限の下方向補正のみ）
+            self._normalize_subtree_spacing(lane_nodes_with_dragged, min_gap=min_gap)
+        except Exception as e:
+            print(f"_reposition_lane_nodes エラー: {e}")
+
+    def _translate_subtree_vertical(self, root: 'NodeItem', dy: float) -> None:
+        """rootノードとその子孫ノードをY方向にdyだけ平行移動する。接続線も更新。"""
+        try:
+            # 対象ノード集合を作成
+            nodes_to_move = [root]
+            if hasattr(self, 'get_descendants'):
+                try:
+                    nodes_to_move.extend(self.get_descendants(root))
+                except Exception:
+                    pass
+            # 位置更新（Xは据え置き）
+            for node in nodes_to_move:
+                pos = node.pos()
+                node.setPos(pos.x(), pos.y() + dy)
             # 接続線更新
+            for connection in self.connections:
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+        except Exception as e:
+            print(f"_translate_subtree_vertical エラー: {e}")
+
+    def _normalize_subtree_spacing(self, ordered_parents: list['NodeItem'], min_gap: float = 20.0) -> None:
+        """Y昇順の親リストについて、各サブツリーの下端と次サブツリー上端の間をmin_gapに揃える（不足分のみ下方へ）。"""
+        try:
+            if not ordered_parents:
+                return
+            # 先頭のサブツリー境界
+            prev_bbox = self.get_subtree_bbox(ordered_parents[0], include_descendants=True)
+            # 下方向だけ補正: gap < min_gap のときだけ押し下げる。gap > min_gap の場合は何もしない（寄せはユーザのドラッグで行える）
+            for parent in ordered_parents[1:]:
+                bbox = self.get_subtree_bbox(parent, include_descendants=True)
+                gap = bbox["y"] - prev_bbox["bottom"]
+                if gap < min_gap:
+                    dy = (prev_bbox["bottom"] + min_gap) - bbox["y"]
+                    self._translate_subtree_vertical(parent, dy)
+                    # 押し下げ後の境界を再取得
+                    bbox = self.get_subtree_bbox(parent, include_descendants=True)
+                # 次ループ用に前のボックスを更新
+                prev_bbox = {"y": prev_bbox["y"], "bottom": bbox["bottom"]}
+            # 最後に接続線とシーン更新
             for connection in self.connections:
                 if hasattr(connection, 'update_connection'):
                     connection.update_connection()
             self.scene.update()
         except Exception as e:
-            print(f"_reposition_lane_nodes エラー: {e}")
+            print(f"_resolve_subtree_overlaps エラー: {e}")
+
+    
 
     def _check_connection_line_collision(self, node: 'NodeItem', target_rect: QRectF) -> bool:
         """接続線との衝突をチェック（X軸方向のみ、Y軸方向は完全に自由）"""
@@ -1796,7 +1868,7 @@ class MindMapView(QGraphicsView):
                 ) for n in subtree_nodes
             }
 
-            # 他ノードとの衝突検出（適度なマージン）
+            # 他ノードとの衝突検出の弾き幅
             margin = 5
             for item in self.scene.items():
                 from node import NodeItem  # 遅延インポート
