@@ -43,6 +43,8 @@ class NodeItem(QGraphicsRectItem):
         self._view = view
         self._edges: list[tuple['CrankConnection', 'NodeItem']] = []
         self._press_pos: QPointF | None = None
+        # 接続線の縦線重なり回避用のオフセット
+        self.vertical_line_offset: float = 0.0
         
         # テキストエディターを初期化
         from text_editor import NodeTextEditor

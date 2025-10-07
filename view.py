@@ -143,6 +143,90 @@ class MindMapView(QGraphicsView):
         
         # 接続管理用のリスト
         self.connections: list[CrankConnection] = []
+        
+        # 整理（整列）設定
+        self.ALIGN_MIN_GAP = 5.0  # 最小間隔
+        self.LANE_X_SPACING = 180.0  # 世代ごとのX間隔（左端整列のための基準）
+
+    def align_generations_and_avoid_line_overlap(self) -> None:
+        """同世代の左端X整列＋接続線重なり回避の最小オフセット配置を行う。"""
+        try:
+            all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
+            if not all_nodes:
+                return
+            # 中心ノード（最も左）
+            center_node = min(all_nodes, key=lambda n: n.pos().x())
+            # BFSで世代を分類
+            generations: dict[int, list[NodeItem]] = {0: [center_node]}
+            visited = {center_node}
+            queue = [(center_node, 0)]
+            while queue:
+                cur, level = queue.pop(0)
+                for conn in self.connections:
+                    if not (hasattr(conn, 'source') and hasattr(conn, 'target')):
+                        continue
+                    if conn.source == cur and conn.target not in visited:
+                        generations.setdefault(level+1, []).append(conn.target)
+                        visited.add(conn.target)
+                        queue.append((conn.target, level+1))
+
+            # 各世代を左端Xで整列
+            base_x = center_node.pos().x()
+            for level, nodes in generations.items():
+                target_left_x = base_x + level * self.LANE_X_SPACING
+                # Y順に安定化
+                nodes.sort(key=lambda n: n.pos().y())
+                for n in nodes:
+                    rect = n.boundingRect()
+                    target_center_x = target_left_x + rect.width()/2.0
+                    n.setPos(target_center_x, n.pos().y())
+
+            # 縦線（vertical_line）のXが重ならないよう最小オフセット
+            # 同一世代内で、親のvertical_xが近接・重複する場合に右へ微オフセット
+            for level, nodes in generations.items():
+                if not nodes:
+                    continue
+                # vertical_xの推定: ノード右端+20（connectionの仕様に合わせる）
+                pairs = []  # (node, vertical_x)
+                for n in nodes:
+                    vr = n.sceneBoundingRect().right() + 20
+                    pairs.append([n, vr])
+                # vertical_x昇順で調整
+                pairs.sort(key=lambda p: p[1])
+                min_dx = 6.0  # 重なり回避の最小水平オフセット
+                for i in range(1, len(pairs)):
+                    prev_vx = pairs[i-1][1]
+                    cur_vx = pairs[i][1]
+                    if cur_vx <= prev_vx:
+                        # 直前より右にずらす
+                        delta = (prev_vx + min_dx) - cur_vx
+                        n = pairs[i][0]
+                        n.setPos(n.pos().x() + delta, n.pos().y())
+                        # 更新後のvertical_xも反映
+                        pairs[i][1] = cur_vx + delta
+
+            # 最後に最小ギャップ5pxで上下の重なりを解消（同一世代ごと）
+            for level, nodes in generations.items():
+                nodes.sort(key=lambda n: n.pos().y())
+                if not nodes:
+                    continue
+                prev = nodes[0]
+                prev_bottom = prev.pos().y() + prev.boundingRect().height()/2.0
+                for n in nodes[1:]:
+                    cur_top = n.pos().y() - n.boundingRect().height()/2.0
+                    required_top = prev_bottom + self.ALIGN_MIN_GAP
+                    if cur_top < required_top:
+                        dy = required_top - cur_top
+                        self._translate_subtree_vertical(n, dy)
+                    prev_bottom = n.pos().y() + n.boundingRect().height()/2.0
+
+            # 接続線更新
+            for connection in self.connections:
+                if hasattr(connection, 'update_connection'):
+                    connection.update_connection()
+            self.scene.update()
+        except Exception as e:
+            print(f"align_generations_and_avoid_line_overlap エラー: {e}")
 
     def add_node(self, label: str = "ノード", pos: QPointF | None = None, is_parent_node: bool = False) -> NodeItem:
         """ノードを追加"""

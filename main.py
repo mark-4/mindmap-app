@@ -183,6 +183,12 @@ class MainWindow(QMainWindow):
         action_grid_snap.toggled.connect(self._toggle_grid_snap)
         toolbar.addAction(action_grid_snap)
 
+        # 整理（整列）
+        action_align = QAction("整理", self)
+        action_align.setStatusTip("同世代の左端Xを揃え、接続線の重なりを回避")
+        action_align.triggered.connect(self.view.align_generations_and_avoid_line_overlap)
+        toolbar.addAction(action_align)
+
         # 削除
         action_delete = QAction("削除", self)
         action_delete.setStatusTip("選択されたノードを削除")
