@@ -45,6 +45,47 @@ class MainWindow(QMainWindow):
         
         # 透明度の初期設定
         self.transparency = 1.0
+        
+        # テーマの初期設定
+        self.current_theme = "default"
+        self.themes = {
+            "default": {
+                "name": "デフォルト",
+                "background": "#f0f0f0",
+                "node_bg": "#ffffff",
+                "node_border": "#333333",
+                "text_color": "#000000",
+                "toolbar_bg": "#e0e0e0",
+                "button_bg": "#ffffff",
+                "button_hover": "#e0e0e0",
+                "button_checked": "#0078d4",
+                "button_checked_text": "#ffffff"
+            },
+            "gray": {
+                "name": "目にやさしいグレー",
+                "background": "#2b2b2b",
+                "node_bg": "#3c3c3c",
+                "node_border": "#666666",
+                "text_color": "#ffffff",
+                "toolbar_bg": "#1e1e1e",
+                "button_bg": "#3c3c3c",
+                "button_hover": "#4c4c4c",
+                "button_checked": "#0078d4",
+                "button_checked_text": "#ffffff"
+            },
+            "pastel": {
+                "name": "明るいパステル",
+                "background": "#f8f9fa",
+                "node_bg": "#ffffff",
+                "node_border": "#e1e5e9",
+                "text_color": "#2c3e50",
+                "toolbar_bg": "#e9ecef",
+                "button_bg": "#ffffff",
+                "button_hover": "#f1f3f4",
+                "button_checked": "#6c5ce7",
+                "button_checked_text": "#ffffff"
+            }
+        }
 
         self.view = MindMapView(self)
         self.setCentralWidget(self.view)
@@ -175,6 +216,12 @@ class MainWindow(QMainWindow):
         action_transparency.setStatusTip("透明度を調整")
         action_transparency.triggered.connect(self._show_transparency_dialog)
         toolbar.addAction(action_transparency)
+
+        # アピアランス
+        action_appearance = QAction("アピアランス", self)
+        action_appearance.setStatusTip("UI配色テーマを選択")
+        action_appearance.triggered.connect(self._show_appearance_menu)
+        toolbar.addAction(action_appearance)
 
         # グリッド
         action_grid = QAction("グリッド", self)
@@ -333,6 +380,69 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"読み込みました: {file_path}", 3000)
             except Exception as e:
                 QMessageBox.critical(self, "エラー", f"読み込みに失敗しました: {e}")
+
+    def _show_appearance_menu(self):
+        """アピアランスメニューを表示"""
+        from PySide6.QtWidgets import QMenu
+        
+        menu = QMenu(self)
+        
+        # 各テーマのアクションを作成
+        for theme_id, theme_data in self.themes.items():
+            action = QAction(theme_data["name"], self)
+            action.setCheckable(True)
+            action.setChecked(theme_id == self.current_theme)
+            action.triggered.connect(lambda checked, tid=theme_id: self._change_theme(tid))
+            menu.addAction(action)
+        
+        # メニューを表示（マウスカーソル位置に表示）
+        menu.exec(self.cursor().pos())
+
+    def _change_theme(self, theme_id: str):
+        """テーマを変更"""
+        if theme_id not in self.themes:
+            return
+        
+        self.current_theme = theme_id
+        theme = self.themes[theme_id]
+        
+        # スタイルシートを適用
+        stylesheet = f"""
+        QMainWindow {{
+            background-color: {theme['background']};
+        }}
+        QToolBar {{
+            background-color: {theme['toolbar_bg']};
+            border: none;
+            spacing: 3px;
+        }}
+        QToolButton {{
+            background-color: {theme['button_bg']};
+            border: 1px solid {theme['node_border']};
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: {theme['text_color']};
+        }}
+        QToolButton:hover {{
+            background-color: {theme['button_hover']};
+        }}
+        QToolButton:checked {{
+            background-color: {theme['button_checked']};
+            color: {theme['button_checked_text']};
+            border: 2px solid {theme['button_checked']};
+        }}
+        QStatusBar {{
+            background-color: {theme['toolbar_bg']};
+            color: {theme['text_color']};
+        }}
+        """
+        
+        self.setStyleSheet(stylesheet)
+        
+        # ビューにもテーマ情報を渡す
+        self.view.set_theme(theme)
+        
+        self.statusBar().showMessage(f"テーマを「{theme['name']}」に変更しました", 2000)
 
 
 def main():

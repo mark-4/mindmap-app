@@ -110,3 +110,18 @@ class CrankConnection:
         if self.horizontal_line2:
             self.scene.removeItem(self.horizontal_line2)
 
+    def update_theme(self, theme: dict):
+        """テーマを更新"""
+        if "node_border" in theme:
+            from PySide6.QtGui import QColor
+            # 接続線の色を更新
+            pen = QPen(QColor(theme["node_border"]), 1.0)
+            pen.setStyle(Qt.DashLine)
+            
+            if self.horizontal_line1:
+                self.horizontal_line1.setPen(pen)
+            if self.vertical_line:
+                self.vertical_line.setPen(pen)
+            if self.horizontal_line2:
+                self.horizontal_line2.setPen(pen)
+

@@ -33,6 +33,7 @@ from commands import (
     RenameNodeCommand,
     SubtreeMoveCommand,
     DeleteNodeCommand,
+    AlignGenerationsCommand,
 )
 
 
@@ -91,6 +92,14 @@ class MindMapView(QGraphicsView):
         # ズームスピードのパラメータ（デフォルト20%）
         self.zoom_speed = 1.20
         
+        # テーマ設定
+        self.current_theme = {
+            "background": "#f0f0f0",
+            "node_bg": "#ffffff",
+            "node_border": "#333333",
+            "text_color": "#000000"
+        }
+        
         # ピンチジェスチャーを有効化
         self.grabGesture(Qt.GestureType.PinchGesture)
         
@@ -148,18 +157,38 @@ class MindMapView(QGraphicsView):
         self.ALIGN_MIN_GAP = 5.0  # 最小間隔
         self.LANE_X_SPACING = 180.0  # 世代ごとのX間隔（左端整列のための基準）
 
+        # 直線的（線形）サブチェーンのみ水平化するかのフラグ
+        self.HORIZONTALIZE_LINEAR_ONLY = True
+
     def align_generations_and_avoid_line_overlap(self) -> None:
-        """同世代の左端X整列＋接続線重なり回避の最小オフセット配置を行う。"""
+        """同世代の左端X整列＋接続線重なり回避の最小オフセット配置を行う。（Undo機能付き）"""
+        if self.undo_stack is not None:
+            # Undoスタック経由で実行
+            self.undo_stack.push(AlignGenerationsCommand(self))
+        else:
+            # 直接実行
+            self._execute_align_generations()
+    
+    def _execute_align_generations(self) -> None:
+        """世代整列の実際の処理"""
         try:
+            print("世代整列処理開始")
             all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
             if not all_nodes:
+                print("ノードが見つかりません")
                 return
+            
+            print(f"全ノード数: {len(all_nodes)}")
+            
             # 中心ノード（最も左）
             center_node = min(all_nodes, key=lambda n: n.pos().x())
+            print(f"中心ノード: {center_node.text_item.toPlainText()}")
+            
             # BFSで世代を分類
             generations: dict[int, list[NodeItem]] = {0: [center_node]}
             visited = {center_node}
             queue = [(center_node, 0)]
+            
             while queue:
                 cur, level = queue.pop(0)
                 for conn in self.connections:
@@ -169,6 +198,10 @@ class MindMapView(QGraphicsView):
                         generations.setdefault(level+1, []).append(conn.target)
                         visited.add(conn.target)
                         queue.append((conn.target, level+1))
+
+            print(f"世代数: {len(generations)}")
+            for level, nodes in generations.items():
+                print(f"  世代{level}: {len(nodes)}個のノード")
 
             # 各世代を左端Xで整列（中心テーマはアンカーとして移動しない）
             base_left = center_node.sceneBoundingRect().left()
@@ -180,11 +213,12 @@ class MindMapView(QGraphicsView):
                     if n is center_node:
                         # アンカー: 中心テーマは動かさない
                         continue
-                    rect = n.boundingRect()
-                    target_center_x = target_left_x + rect.width()/2.0
-                    n.setPos(target_center_x, n.pos().y())
-
-            # （左端X整列を優先するため、同世代内の縦線重なり回避の横方向オフセットは無効化）
+                    try:
+                        rect = n.boundingRect()
+                        target_center_x = target_left_x + rect.width()/2.0
+                        n.setPos(target_center_x, n.pos().y())
+                    except Exception as e:
+                        print(f"ノード位置設定エラー: {e}")
 
             # 最後に最小ギャップ5pxで上下の重なりを解消（同一世代ごと）
             for level, nodes in generations.items():
@@ -194,22 +228,504 @@ class MindMapView(QGraphicsView):
                 prev = nodes[0]
                 prev_bottom = prev.pos().y() + prev.boundingRect().height()/2.0
                 for n in nodes[1:]:
-                    cur_top = n.pos().y() - n.boundingRect().height()/2.0
-                    required_top = prev_bottom + self.ALIGN_MIN_GAP
-                    if cur_top < required_top:
-                        dy = required_top - cur_top
-                        self._translate_subtree_vertical(n, dy)
-                    prev_bottom = n.pos().y() + n.boundingRect().height()/2.0
+                    try:
+                        cur_top = n.pos().y() - n.boundingRect().height()/2.0
+                        required_top = prev_bottom + self.ALIGN_MIN_GAP
+                        if cur_top < required_top:
+                            dy = required_top - cur_top
+                            self._translate_subtree_vertical(n, dy)
+                        prev_bottom = n.pos().y() + n.boundingRect().height()/2.0
+                    except Exception as e:
+                        print(f"ノード重なり解消エラー: {e}")
 
-            #（接続線水平化は要求により取り消し）
+            # サブツリーの接続線を横一列一直線にする処理
+            self._make_connections_horizontal()
+            
+            # 接続線の重なりを解消する処理
+            self._resolve_connection_intersections()
+            
+            # 最終的なノード重なりチェックと解消
+            self._final_node_overlap_resolution()
 
             # 接続線更新
             for connection in self.connections:
-                if hasattr(connection, 'update_connection'):
-                    connection.update_connection()
+                try:
+                    if hasattr(connection, 'update_connection'):
+                        connection.update_connection()
+                except Exception as e:
+                    print(f"接続線更新エラー: {e}")
+            
             self.scene.update()
+            print("世代整列処理完了")
+            
         except Exception as e:
-            print(f"align_generations_and_avoid_line_overlap エラー: {e}")
+            print(f"_execute_align_generations エラー: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _make_connections_horizontal(self) -> None:
+        """サブツリーの接続線を横一列一直線にする"""
+        try:
+            print("接続線水平化処理開始")
+            
+            # 各接続線について処理
+            for connection in self.connections:
+                if not (hasattr(connection, 'source') and hasattr(connection, 'target')):
+                    continue
+                
+                source = connection.source
+                target = connection.target
+                
+                # 線形チェーンのみを対象にする（設定有効時）
+                if getattr(self, 'HORIZONTALIZE_LINEAR_ONLY', False):
+                    if not self._is_linear_chain_edge(connection):
+                        continue
+
+                # ソースノードのY座標にターゲットノードを合わせる
+                source_y = source.pos().y()
+                target_y = target.pos().y()
+                
+                # Y座標が異なる場合のみ移動
+                if abs(source_y - target_y) > 1.0:  # 1px以上の差がある場合
+                    dy = source_y - target_y
+                    print(f"接続線水平化: {source.text_item.toPlainText()} -> {target.text_item.toPlainText()}, Y差={dy:.1f}px")
+                    
+                    # ターゲットノードとそのサブツリーを移動
+                    self._translate_subtree_vertical(target, dy)
+            
+            # 移動後にノードの重なりを解消
+            self._resolve_node_overlaps_after_horizontal()
+            
+            print("接続線水平化処理完了")
+            
+        except Exception as e:
+            print(f"_make_connections_horizontal エラー: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _count_outgoing(self, node: 'NodeItem') -> int:
+        """nodeから出るエッジ数"""
+        try:
+            count = 0
+            for c in self.connections:
+                if hasattr(c, 'source') and c.source is node:
+                    count += 1
+            return count
+        except Exception:
+            return 0
+
+    def _count_incoming(self, node: 'NodeItem') -> int:
+        """nodeに入るエッジ数"""
+        try:
+            count = 0
+            for c in self.connections:
+                if hasattr(c, 'target') and c.target is node:
+                    count += 1
+            return count
+        except Exception:
+            return 0
+
+    def _is_linear_chain_edge(self, connection: 'CrankConnection') -> bool:
+        """エッジ(source->target)が線形チェーンの一部か判定。
+        条件:
+          - sourceのアウトが1
+          - targetのインが1
+          - targetのアウトは0または1（分岐の始点は除外）
+        """
+        try:
+            source = getattr(connection, 'source', None)
+            target = getattr(connection, 'target', None)
+            if source is None or target is None:
+                return False
+            out_s = self._count_outgoing(source)
+            in_t = self._count_incoming(target)
+            out_t = self._count_outgoing(target)
+            return (out_s == 1) and (in_t == 1) and (out_t <= 1)
+        except Exception:
+            return False
+
+    def _resolve_node_overlaps_after_horizontal(self) -> None:
+        """水平化後のノード重なりを解消"""
+        try:
+            print("水平化後ノード重なり解消処理開始")
+            
+            # 全ノードを取得
+            all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
+            if len(all_nodes) <= 1:
+                return
+            
+            # ノードをY座標でソート
+            all_nodes.sort(key=lambda n: n.pos().y())
+            
+            min_gap = 5.0  # 最小間隔
+            
+            for i in range(len(all_nodes) - 1):
+                current_node = all_nodes[i]
+                next_node = all_nodes[i + 1]
+                
+                current_rect = current_node.sceneBoundingRect()
+                next_rect = next_node.sceneBoundingRect()
+                
+                # 重なりをチェック
+                if current_rect.intersects(next_rect):
+                    # 重なっている場合、次のノードを下に移動
+                    overlap = current_rect.bottom() - next_rect.top()
+                    shift_distance = overlap + min_gap
+                    
+                    print(f"重なり解消: {next_node.text_item.toPlainText()} を {shift_distance:.1f}px 下に移動")
+                    
+                    # 次のノードとそのサブツリーを下に移動
+                    self._translate_subtree_vertical(next_node, shift_distance)
+                    
+                    # 移動後の位置を更新
+                    all_nodes[i + 1] = next_node
+            
+            print("水平化後ノード重なり解消処理完了")
+            
+        except Exception as e:
+            print(f"_resolve_node_overlaps_after_horizontal エラー: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _resolve_connection_intersections(self) -> None:
+        """接続線の交差を検出して重なりを解消"""
+        try:
+            print("接続線交差解消処理開始")
+            
+            # 接続線の交差を検出
+            intersections = self._detect_connection_intersections()
+            
+            if not intersections:
+                print("接続線の交差は検出されませんでした")
+                return
+            
+            print(f"{len(intersections)}個の接続線交差を検出")
+            
+            # より効果的な交差解消：一度に全ての交差を処理
+            self._resolve_all_intersections_at_once(intersections)
+            
+            print("接続線交差解消処理完了")
+            
+        except Exception as e:
+            print(f"_resolve_connection_intersections エラー: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _detect_connection_intersections(self) -> list:
+        """接続線の交差を検出"""
+        intersections = []
+        
+        for i, conn1 in enumerate(self.connections):
+            if not (hasattr(conn1, 'source') and hasattr(conn1, 'target')):
+                continue
+                
+            for j, conn2 in enumerate(self.connections[i+1:], i+1):
+                if not (hasattr(conn2, 'source') and hasattr(conn2, 'target')):
+                    continue
+                
+                # 同じノードを共有する接続線はスキップ
+                if (conn1.source == conn2.source or conn1.source == conn2.target or
+                    conn1.target == conn2.source or conn1.target == conn2.target):
+                    continue
+                
+                # 接続線の交差をチェック
+                if self._check_connection_intersection(conn1, conn2):
+                    intersections.append((conn1, conn2))
+                    print(f"交差検出: {conn1.source.text_item.toPlainText()}->{conn1.target.text_item.toPlainText()} と {conn2.source.text_item.toPlainText()}->{conn2.target.text_item.toPlainText()}")
+        
+        return intersections
+
+    def _check_connection_intersection(self, conn1, conn2) -> bool:
+        """2つの接続線が交差しているかチェック"""
+        try:
+            # 接続線の座標を取得
+            line1_points = self._get_connection_line_points(conn1)
+            line2_points = self._get_connection_line_points(conn2)
+            
+            # 各線分について交差をチェック
+            for i in range(len(line1_points) - 1):
+                for j in range(len(line2_points) - 1):
+                    if self._line_segments_intersect(
+                        line1_points[i], line1_points[i+1],
+                        line2_points[j], line2_points[j+1]
+                    ):
+                        return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"_check_connection_intersection エラー: {e}")
+            return False
+
+    def _get_connection_line_points(self, connection) -> list:
+        """接続線の座標点を取得"""
+        points = []
+        
+        if not (hasattr(connection, 'source') and hasattr(connection, 'target')):
+            return points
+        
+        source_pos = connection.source.pos()
+        target_pos = connection.target.pos()
+        
+        # クランク状接続線の座標を計算
+        # 水平線1の終点
+        h1_end_x = source_pos.x() + 80  # 固定の水平距離
+        h1_end_y = source_pos.y()
+        
+        # 垂直線の終点
+        v_end_x = h1_end_x
+        v_end_y = target_pos.y()
+        
+        # 水平線2の終点
+        h2_end_x = target_pos.x() - 80  # 固定の水平距離
+        h2_end_y = target_pos.y()
+        
+        points = [
+            source_pos,
+            QPointF(h1_end_x, h1_end_y),
+            QPointF(v_end_x, v_end_y),
+            QPointF(h2_end_x, h2_end_y),
+            target_pos
+        ]
+        
+        return points
+
+    def _line_segments_intersect(self, p1, p2, p3, p4) -> bool:
+        """2つの線分が交差しているかチェック"""
+        def ccw(A, B, C):
+            return (C.y() - A.y()) * (B.x() - A.x()) > (B.y() - A.y()) * (C.x() - A.x())
+        
+        return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(p1, p2, p4)
+
+    def _resolve_all_intersections_at_once(self, intersections) -> None:
+        """全ての交差を一度に解消"""
+        try:
+            print("一度に全ての交差を解消開始")
+            
+            # 交差している接続線のターゲットノードを取得
+            affected_nodes = set()
+            for conn1, conn2 in intersections:
+                affected_nodes.add(conn1.target)
+                affected_nodes.add(conn2.target)
+            
+            print(f"影響を受けるノード数: {len(affected_nodes)}")
+            
+            # 各ノードの親を取得
+            node_parents = {}
+            for node in affected_nodes:
+                for connection in self.connections:
+                    if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                        connection.target == node):
+                        node_parents[node] = connection.source
+                        break
+            
+            # 親ごとにグループ化
+            parent_groups = {}
+            for node, parent in node_parents.items():
+                if parent not in parent_groups:
+                    parent_groups[parent] = []
+                parent_groups[parent].append(node)
+            
+            # 各親グループ内でノードを並べ替え（コンパクトに配置）
+            for parent, children in parent_groups.items():
+                if len(children) > 1:
+                    self._reorder_children_compact(parent, children)
+            
+            print("一度に全ての交差を解消完了")
+            
+        except Exception as e:
+            print(f"_resolve_all_intersections_at_once エラー: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _resolve_intersections_by_reordering(self, intersections) -> None:
+        """接続線の交差を並べ替えで解消（後方互換性のため）"""
+        self._resolve_all_intersections_at_once(intersections)
+
+    def _reorder_children_compact(self, parent, children) -> None:
+        """子ノードをコンパクトに並べ替え"""
+        try:
+            print(f"親ノード {parent.text_item.toPlainText()} の子ノード {len(children)}個をコンパクトに並べ替え")
+            
+            # 現在のY座標でソート
+            children.sort(key=lambda n: n.pos().y())
+            
+            # 最小間隔を設定（ノードの高さ + 余白5px）
+            if children:
+                child_h = children[0].boundingRect().height()
+                min_gap = float(child_h) + 5.0
+            else:
+                min_gap = 77.0  # デフォルト（おおよそ72+5）
+            
+            # 最初のノードの位置を基準にする
+            if children:
+                first_child = children[0]
+                base_y = first_child.pos().y()
+                
+                # 各子ノードを順番に配置
+                for i, child in enumerate(children):
+                    if i == 0:
+                        continue  # 最初のノードはそのまま
+                    
+                    # 新しいY座標を計算
+                    new_y = base_y + i * min_gap
+                    current_y = child.pos().y()
+                    dy = new_y - current_y
+                    
+                    if abs(dy) > 1.0:  # 1px以上の差がある場合のみ移動
+                        print(f"  子ノード {child.text_item.toPlainText()} を {dy:.1f}px 移動")
+                        
+                        # 子ノードとそのサブツリーを移動
+                        self._translate_subtree_vertical(child, dy)
+            
+        except Exception as e:
+            print(f"_reorder_children_compact エラー: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _reorder_children_to_avoid_intersections(self, parent, children, intersections) -> None:
+        """子ノードを並べ替えて交差を回避（後方互換性のため）"""
+        self._reorder_children_compact(parent, children)
+
+    def _final_node_overlap_resolution(self) -> None:
+        """最終的なノード重なりチェックと解消（コンパクト配置）"""
+        try:
+            print("最終ノード重なり解消処理開始")
+            
+            # 全ノードを取得
+            all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
+            if len(all_nodes) <= 1:
+                return
+            
+            # ノードをY座標でソート
+            all_nodes.sort(key=lambda n: n.pos().y())
+            
+            min_gap = 5.0  # 最小間隔
+            max_iterations = 2  # 最大反復回数を減らす
+            
+            for iteration in range(max_iterations):
+                overlaps_found = False
+                
+                for i in range(len(all_nodes) - 1):
+                    current_node = all_nodes[i]
+                    next_node = all_nodes[i + 1]
+                    
+                    current_rect = current_node.sceneBoundingRect()
+                    next_rect = next_node.sceneBoundingRect()
+                    
+                    # 重なりをチェック
+                    if current_rect.intersects(next_rect):
+                        overlaps_found = True
+                        
+                        # 重なっている場合、次のノードを下に移動
+                        overlap = current_rect.bottom() - next_rect.top()
+                        shift_distance = overlap + min_gap
+                        
+                        # 移動距離を制限（最大50pxに減らす）
+                        max_shift = 50.0
+                        if shift_distance > max_shift:
+                            shift_distance = max_shift
+                        
+                        print(f"最終重なり解消: {next_node.text_item.toPlainText()} を {shift_distance:.1f}px 下に移動")
+                        
+                        # 次のノードとそのサブツリーを下に移動
+                        self._translate_subtree_vertical(next_node, shift_distance)
+                        
+                        # 移動後の位置を更新
+                        all_nodes[i + 1] = next_node
+                
+                if not overlaps_found:
+                    break
+                
+                print(f"最終重なり解消: 反復 {iteration + 1} 完了")
+            
+            # コンパクト化：全ノードを画面内に収める
+            self._compact_layout_to_screen()
+            
+            print("最終ノード重なり解消処理完了")
+            
+        except Exception as e:
+            print(f"_final_node_overlap_resolution エラー: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _compact_layout_to_screen(self) -> None:
+        """レイアウトを画面内にコンパクトに配置"""
+        try:
+            print("画面内コンパクト配置開始")
+            
+            # 全ノードを取得
+            all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
+            if len(all_nodes) <= 1:
+                return
+            
+            # ノードの境界を計算
+            min_x = min(node.pos().x() for node in all_nodes)
+            max_x = max(node.pos().x() + node.boundingRect().width() for node in all_nodes)
+            min_y = min(node.pos().y() for node in all_nodes)
+            max_y = max(node.pos().y() + node.boundingRect().height() for node in all_nodes)
+            
+            # 現在のレイアウトサイズ
+            layout_width = max_x - min_x
+            layout_height = max_y - min_y
+            
+            # 画面サイズを取得
+            view_rect = self.viewport().rect()
+            screen_width = view_rect.width()
+            screen_height = view_rect.height()
+            
+            print(f"レイアウトサイズ: {layout_width:.1f}x{layout_height:.1f}")
+            print(f"画面サイズ: {screen_width}x{screen_height}")
+            
+            # 画面内に収まるようにスケールを計算
+            scale_x = screen_width * 0.8 / layout_width if layout_width > 0 else 1.0
+            scale_y = screen_height * 0.8 / layout_height if layout_height > 0 else 1.0
+            scale = min(scale_x, scale_y, 1.0)  # 縮小のみ、拡大はしない
+            
+            if scale < 1.0:
+                print(f"スケール調整: {scale:.2f}")
+                
+                # 中心点を計算
+                center_x = (min_x + max_x) / 2
+                center_y = (min_y + max_y) / 2
+                
+                # 各ノードを中心点を基準にスケール
+                for node in all_nodes:
+                    current_pos = node.pos()
+                    
+                    # 中心点からの相対位置を計算
+                    rel_x = current_pos.x() - center_x
+                    rel_y = current_pos.y() - center_y
+                    
+                    # スケール適用
+                    new_x = center_x + rel_x * scale
+                    new_y = center_y + rel_y * scale
+                    
+                    # ノードを移動
+                    node.setPos(new_x, new_y)
+                    
+                    # 接続線を更新
+                    self._update_connections_for_node(node)
+            
+            print("画面内コンパクト配置完了")
+            
+        except Exception as e:
+            print(f"_compact_layout_to_screen エラー: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _update_connections_for_node(self, node: NodeItem) -> None:
+        """指定されたノードに関連する接続線を更新"""
+        try:
+            # このノードをソースまたはターゲットとする接続線を更新
+            for connection in self.connections:
+                if (hasattr(connection, 'source') and hasattr(connection, 'target') and
+                    (connection.source == node or connection.target == node)):
+                    connection.update_connection()
+        except Exception as e:
+            print(f"_update_connections_for_node エラー: {e}")
+            import traceback
+            traceback.print_exc()
 
     def add_node(self, label: str = "ノード", pos: QPointF | None = None, is_parent_node: bool = False) -> NodeItem:
         """ノードを追加"""
@@ -628,7 +1144,7 @@ class MindMapView(QGraphicsView):
                             self._create_edge(self.pending_source_node, clicked_item)
                     self.pending_source_node.setSelected(False)
                     self.pending_source_node = None
-                return
+                    return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -742,7 +1258,6 @@ class MindMapView(QGraphicsView):
         collision_detected = False
         if has_movement:
             try:
-                from node import NodeItem  # 遅延インポート
                 margin = 5
                 for n in selected_nodes:
                     # nの現在位置での矩形
@@ -892,6 +1407,8 @@ class MindMapView(QGraphicsView):
                 for item in self.scene.selectedItems():
                     item.setSelected(False)
                 new_node.setSelected(True)
+
+
 
     def _create_edge(self, source: NodeItem, target: NodeItem) -> CrankConnection:
         """エッジを作成"""
@@ -1492,7 +2009,7 @@ class MindMapView(QGraphicsView):
         return 0  # 簡略化のため常に0
 
     def _navigate_to_nearest_node(self, direction: Qt.Key):
-        """最寄りのノードに移動"""
+        """最寄りのノードに選択移動（マップ自体は動かさない）"""
         selected_nodes = [item for item in self.scene.selectedItems() if isinstance(item, NodeItem)]
         if not selected_nodes:
             return
@@ -1538,8 +2055,7 @@ class MindMapView(QGraphicsView):
         if nearest_node:
             current_node.setSelected(False)
             nearest_node.setSelected(True)
-            # ビューをスクロール
-            self.centerOn(nearest_node)
+            # ビューをスクロールせず、選択のみ変更
 
     def _export_to_json(self) -> str:
         """JSONにエクスポート"""
@@ -1652,7 +2168,6 @@ class MindMapView(QGraphicsView):
     def _check_insertion_zone(self, dragged_node: 'NodeItem', target_pos: QPointF) -> tuple[bool, 'NodeItem', int]:
         """挿入ゾーンの検出（親ノードの15px以内）"""
         try:
-            from node import NodeItem
             insertion_threshold = 15.0  # 15px以内
             
             for item in self.scene.items():
@@ -1762,7 +2277,6 @@ class MindMapView(QGraphicsView):
         Returns: (should_insert, lane_nodes, insert_index)
         """
         try:
-            from node import NodeItem
             lane_width = 60.0  # ドロップX±lane_width内を同じ縦レーンとみなす
             candidates = [item for item in self.scene.items() if isinstance(item, NodeItem) and item is not dragged_node]
             if not candidates:
@@ -1787,16 +2301,25 @@ class MindMapView(QGraphicsView):
             print(f"_check_lane_insertion エラー: {e}")
             return False, [], 0
 
-    def _reposition_lane_nodes(self, lane_nodes_with_dragged: list['NodeItem']) -> None:
+    def _reposition_lane_nodes(self, lane_nodes_with_dragged: list['NodeItem']) -> dict:
         """縦レーンのノード群を必要最小限だけ下に押し下げて非重なり化（最小ギャップ=5px、Xは維持）。
 
         等間隔で広げず、先頭ノードのYをアンカーにし、以降のノードは
         直前ノードの下端+最小ギャップを下回るときだけ下方向へ補正します。
         これにより「割り込み」と「寄せ」を両立します。
+        
+        Returns:
+            dict: {'nodes': list, 'old_positions': dict, 'new_positions': dict}
         """
         try:
             if not lane_nodes_with_dragged:
-                return
+                return {'nodes': [], 'old_positions': {}, 'new_positions': {}}
+            
+            # シフト前の位置を記録
+            old_positions = {}
+            for node in lane_nodes_with_dragged:
+                old_positions[node] = node.pos()
+            
             # Y昇順に並び替え（先頭＝最上位ノード）
             lane_nodes_with_dragged.sort(key=lambda n: n.pos().y())
 
@@ -1834,8 +2357,20 @@ class MindMapView(QGraphicsView):
 
             # サブツリー間の最小ギャップも5pxで正規化（必要最小限の下方向補正のみ）
             self._normalize_subtree_spacing(lane_nodes_with_dragged, min_gap=min_gap)
+            
+            # シフト後の位置を記録
+            new_positions = {}
+            for node in lane_nodes_with_dragged:
+                new_positions[node] = node.pos()
+            
+            return {
+                'nodes': lane_nodes_with_dragged,
+                'old_positions': old_positions,
+                'new_positions': new_positions
+            }
         except Exception as e:
             print(f"_reposition_lane_nodes エラー: {e}")
+            return {'nodes': [], 'old_positions': {}, 'new_positions': {}}
 
     def _translate_subtree_vertical(self, root: 'NodeItem', dy: float) -> None:
         """rootノードとその子孫ノードをY方向にdyだけ平行移動する。接続線も更新。"""
@@ -1938,7 +2473,6 @@ class MindMapView(QGraphicsView):
             # 他ノードとの衝突検出の弾き幅
             margin = 5
             for item in self.scene.items():
-                from node import NodeItem  # 遅延インポート
                 if isinstance(item, NodeItem) and item not in subtree_nodes:
                     item_rect = item.sceneBoundingRect()
                     expanded_rect = QRectF(
@@ -1955,3 +2489,25 @@ class MindMapView(QGraphicsView):
         except Exception as e:
             print(f"_check_subtree_collision エラー: {e}")
             return False
+
+    def set_theme(self, theme: dict):
+        """テーマを設定"""
+        self.current_theme = theme
+        
+        # シーンの背景色を更新
+        if "background" in theme:
+            from PySide6.QtGui import QColor
+            bg_color = QColor(theme["background"])
+            self.scene.setBackgroundBrush(QBrush(bg_color))
+        
+        # 既存のノードの色を更新
+        for item in self.scene.items():
+            if isinstance(item, NodeItem):
+                item.update_theme(theme)
+        
+        # 接続線の色も更新
+        for connection in self.connections:
+            if hasattr(connection, 'update_theme'):
+                connection.update_theme(theme)
+        
+        self.scene.update()

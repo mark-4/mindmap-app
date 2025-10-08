@@ -33,6 +33,7 @@ class AddNodeCommand(QUndoCommand):
     
     def redo(self):
         """ノードを追加"""
+        print(f"AddNodeCommand redo: ラベル={self.label}, 位置={self.pos}, 親ノード={self.parent_node.text_item.toPlainText() if self.parent_node else None}")
         self.node = self.view.add_node(self.label, self.pos, self.is_parent_node)
         if self.parent_node is not None:
             self.connection = self.view._create_edge(self.parent_node, self.node)
@@ -44,6 +45,9 @@ class AddNodeCommand(QUndoCommand):
                 item.setSelected(False)
             # 新しいノードを選択
             self.node.setSelected(True)
+            print(f"AddNodeCommand redo完了: ノード作成成功, 位置={self.node.pos()}")
+        else:
+            print(f"AddNodeCommand redo失敗: ノード作成失敗")
     
     def undo(self):
         """ノードを削除"""
@@ -422,16 +426,89 @@ class ReorderNodeCommand(QUndoCommand):
     def undo(self):
         """順番変更を元に戻す"""
         try:
-            # 古い位置に戻す
-            for child, old_pos in self.old_positions.items():
-                child.setPos(old_pos)
+            # 位置を元に戻す
+            for node, old_pos in self.old_positions.items():
+                node.setPos(old_pos)
             
             # 接続線を更新
             for connection in self.view.connections:
                 if hasattr(connection, 'update_connection'):
                     connection.update_connection()
-                    
+            self.view.scene.update()
         except Exception as e:
             print(f"ReorderNodeCommand undo エラー: {e}")
 
 
+class AlignGenerationsCommand(QUndoCommand):
+    """世代整列のアンドゥ・リドゥコマンド"""
+    
+    def __init__(self, view: 'MindMapView'):
+        super().__init__("世代整列")
+        self.view = view
+        self.old_positions = {}
+        self.old_connections = {}
+        
+    def redo(self):
+        """世代整列を実行"""
+        # 現在の位置を保存
+        all_nodes = [item for item in self.view.scene.items() if isinstance(item, NodeItem)]
+        for node in all_nodes:
+            self.old_positions[node] = node.pos()
+        
+        # 接続線の状態を保存
+        for connection in self.view.connections:
+            if hasattr(connection, 'source') and hasattr(connection, 'target'):
+                self.old_connections[connection] = {
+                    'source': connection.source,
+                    'target': connection.target
+                }
+        
+        # 世代整列を直接実行（Undoスタック経由ではなく）
+        self.view._execute_align_generations()
+        
+    def undo(self):
+        """世代整列を元に戻す"""
+        # 位置を元に戻す
+        for node, old_pos in self.old_positions.items():
+            node.setPos(old_pos)
+        
+        # 接続線を更新
+        for connection in self.view.connections:
+            if hasattr(connection, 'update_connection'):
+                connection.update_connection()
+        self.view.scene.update()
+
+
+class NodeShiftCommand(QUndoCommand):
+    """ノードシフトのアンドゥ・リドゥコマンド"""
+    
+    def __init__(self, view: 'MindMapView', shifted_nodes: list, old_positions: dict, new_positions: dict):
+        super().__init__("ノードシフト")
+        self.view = view
+        self.shifted_nodes = shifted_nodes
+        self.old_positions = old_positions.copy()
+        self.new_positions = new_positions.copy()
+        
+    def redo(self):
+        """ノードシフトを実行"""
+        for node in self.shifted_nodes:
+            if node in self.new_positions:
+                node.setPos(self.new_positions[node])
+        
+        # 接続線を更新
+        for connection in self.view.connections:
+            if hasattr(connection, 'update_connection'):
+                connection.update_connection()
+        self.view.scene.update()
+        
+    def undo(self):
+        """ノードシフトを元に戻す"""
+        for node in self.shifted_nodes:
+            if node in self.old_positions:
+                node.setPos(self.old_positions[node])
+        
+        # 接続線を更新
+        for connection in self.view.connections:
+            if hasattr(connection, 'update_connection'):
+                connection.update_connection()
+        self.view.scene.update()

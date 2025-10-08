@@ -205,7 +205,17 @@ class NodeItem(QGraphicsRectItem):
             if lane_insert:
                 nodes_with_dragged = lane_nodes.copy()
                 nodes_with_dragged.insert(lane_index, self)
-                self._view._reposition_lane_nodes(nodes_with_dragged)
+                lane_result = self._view._reposition_lane_nodes(nodes_with_dragged)
+                
+                # Undoコマンドを追加
+                if self._view.undo_stack is not None and lane_result:
+                    shifted_nodes = lane_result.get('nodes', [])
+                    old_positions = lane_result.get('old_positions', {})
+                    new_positions = lane_result.get('new_positions', {})
+                    if shifted_nodes:
+                        from commands import NodeShiftCommand
+                        self._view.undo_stack.push(NodeShiftCommand(self._view, shifted_nodes, old_positions, new_positions))
+                
                 if should_end_subtree_drag:
                     self._view.end_subtree_drag()
                 self._press_pos = None
@@ -286,3 +296,24 @@ class NodeItem(QGraphicsRectItem):
         if not self.text_editor.is_editing:
             self.text_editor.start_editing()
         super().mouseDoubleClickEvent(event)
+
+    def update_theme(self, theme: dict):
+        """テーマを更新"""
+        # ノードの色を更新
+        if "node_bg" in theme and "node_border" in theme and "text_color" in theme:
+            # ペンを更新
+            pen = QPen(QColor(theme["node_border"]))
+            pen.setWidth(2)
+            self.setPen(pen)
+            
+            # ブラシを更新
+            brush = QBrush(QColor(theme["node_bg"]))
+            self.setBrush(brush)
+            
+            # テキストの色を更新
+            if hasattr(self, 'text_item'):
+                self.text_item.setDefaultTextColor(QColor(theme["text_color"]))
+            
+            # テキストエディターの色も更新
+            if hasattr(self, 'text_editor'):
+                self.text_editor.update_theme(theme)

@@ -157,3 +157,18 @@ class SimpleTextEditor:
                 self.node_item._view.undo_stack.push(
                     RenameNodeCommand(self.node_item, old_text, new_text.strip())
                 )
+
+    def update_theme(self, theme: dict):
+        """テーマを更新"""
+        if self.line_edit and "text_color" in theme and "node_bg" in theme:
+            from PySide6.QtGui import QColor
+            # LineEditの色を更新
+            self.line_edit.setStyleSheet(f"""
+                QLineEdit {{
+                    color: {theme['text_color']};
+                    background-color: {theme['node_bg']};
+                    border: 2px solid {theme.get('node_border', '#333333')};
+                    border-radius: 4px;
+                    padding: 4px;
+                }}
+            """)
