@@ -23,7 +23,24 @@ class CustomLineEdit(QLineEdit):
         if event.key() == Qt.Key_Escape:
             self.text_editor._cancel_editing()
         else:
+            # 全てのキーイベントをLineEditで処理
             super().keyPressEvent(event)
+    
+    def inputMethodEvent(self, event):
+        """日本語入力（IME）イベント"""
+        # IMEイベントを適切に処理
+        super().inputMethodEvent(event)
+    
+    def focusInEvent(self, event):
+        """フォーカスインイベント"""
+        super().focusInEvent(event)
+        # IMEの準備を確実にする（即座に実行）
+        self.setAttribute(Qt.WA_InputMethodEnabled, True)
+        self.setInputMethodHints(Qt.ImhPreferUppercase | Qt.ImhPreferLowercase)
+    
+    def focusOutEvent(self, event):
+        """フォーカスアウトイベント"""
+        super().focusOutEvent(event)
 
 
 class NodeTextEditor:
@@ -60,6 +77,14 @@ class NodeTextEditor:
             }
         """)
         
+        # 日本語入力（IME）の設定
+        self.line_edit.setAttribute(Qt.WA_InputMethodEnabled, True)
+        self.line_edit.setInputMethodHints(Qt.ImhPreferUppercase | Qt.ImhPreferLowercase)
+        
+        # IMEの準備を確実にするための追加設定
+        self.line_edit.setAttribute(Qt.WA_KeyCompression, False)
+        self.line_edit.setAcceptDrops(False)
+        
         # プロキシウィジェットにLineEditを設定
         self.proxy_widget.setWidget(self.line_edit)
         
@@ -73,11 +98,17 @@ class NodeTextEditor:
         self.line_edit.focusOutEvent = self._line_edit_focus_out
         
         # フォーカスとテキスト選択
+        self.line_edit.setFocusPolicy(Qt.StrongFocus)
+        
+        # フォーカス設定とテキスト選択
         self.line_edit.setFocus()
-        self.line_edit.selectAll()
+        self.line_edit.activateWindow()
+        QTimer.singleShot(10, self.line_edit.selectAll)
         
         # ノードのテキストを非表示
         self.node_item.text_item.setVisible(False)
+    
+    
     
     def _finish_editing(self):
         """編集を完了"""

@@ -1329,12 +1329,13 @@ class MindMapView(QGraphicsView):
         """キープレスイベント"""
         # テキスト編集中かチェック
         if self._is_any_node_editing():
-            # テキスト編集中はEscapeキーのみ処理し、他はLineEditに渡す
-            if event.key() == Qt.Key_Escape:
-                # EscapeキーはLineEditで処理される
-                pass
-            # 他のキーはLineEditに渡すため、ここでは何もしない
+            # テキスト編集中はLineEditにキーイベントを渡す
             super().keyPressEvent(event)
+            return
+        
+        # Enterキーでテキスト編集を開始
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self._start_text_editing_with_enter()
             return
         
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
@@ -1351,6 +1352,27 @@ class MindMapView(QGraphicsView):
             self._select_all_nodes()
         else:
             super().keyPressEvent(event)
+    
+    def inputMethodEvent(self, event):
+        """日本語入力（IME）イベント"""
+        # テキスト編集中かチェック
+        if self._is_any_node_editing():
+            # テキスト編集中はLineEditにIMEイベントを渡す
+            super().inputMethodEvent(event)
+            return
+        
+        # テキスト編集中でない場合は通常の処理
+        super().inputMethodEvent(event)
+
+    def _start_text_editing_with_enter(self):
+        """Enterキーでテキスト編集を開始"""
+        selected_nodes = [item for item in self.scene.selectedItems() if isinstance(item, NodeItem)]
+        if len(selected_nodes) != 1:
+            return
+        
+        node = selected_nodes[0]
+        node.text_editor.start_editing()
+
 
     def _select_all_nodes(self):
         """全てのノードを選択"""
