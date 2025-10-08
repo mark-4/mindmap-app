@@ -170,40 +170,21 @@ class MindMapView(QGraphicsView):
                         visited.add(conn.target)
                         queue.append((conn.target, level+1))
 
-            # 各世代を左端Xで整列
-            base_x = center_node.pos().x()
+            # 各世代を左端Xで整列（中心テーマはアンカーとして移動しない）
+            base_left = center_node.sceneBoundingRect().left()
             for level, nodes in generations.items():
-                target_left_x = base_x + level * self.LANE_X_SPACING
+                target_left_x = base_left + level * self.LANE_X_SPACING
                 # Y順に安定化
                 nodes.sort(key=lambda n: n.pos().y())
                 for n in nodes:
+                    if n is center_node:
+                        # アンカー: 中心テーマは動かさない
+                        continue
                     rect = n.boundingRect()
                     target_center_x = target_left_x + rect.width()/2.0
                     n.setPos(target_center_x, n.pos().y())
 
-            # 縦線（vertical_line）のXが重ならないよう最小オフセット
-            # 同一世代内で、親のvertical_xが近接・重複する場合に右へ微オフセット
-            for level, nodes in generations.items():
-                if not nodes:
-                    continue
-                # vertical_xの推定: ノード右端+20（connectionの仕様に合わせる）
-                pairs = []  # (node, vertical_x)
-                for n in nodes:
-                    vr = n.sceneBoundingRect().right() + 20
-                    pairs.append([n, vr])
-                # vertical_x昇順で調整
-                pairs.sort(key=lambda p: p[1])
-                min_dx = 6.0  # 重なり回避の最小水平オフセット
-                for i in range(1, len(pairs)):
-                    prev_vx = pairs[i-1][1]
-                    cur_vx = pairs[i][1]
-                    if cur_vx <= prev_vx:
-                        # 直前より右にずらす
-                        delta = (prev_vx + min_dx) - cur_vx
-                        n = pairs[i][0]
-                        n.setPos(n.pos().x() + delta, n.pos().y())
-                        # 更新後のvertical_xも反映
-                        pairs[i][1] = cur_vx + delta
+            # （左端X整列を優先するため、同世代内の縦線重なり回避の横方向オフセットは無効化）
 
             # 最後に最小ギャップ5pxで上下の重なりを解消（同一世代ごと）
             for level, nodes in generations.items():
@@ -219,6 +200,8 @@ class MindMapView(QGraphicsView):
                         dy = required_top - cur_top
                         self._translate_subtree_vertical(n, dy)
                     prev_bottom = n.pos().y() + n.boundingRect().height()/2.0
+
+            #（接続線水平化は要求により取り消し）
 
             # 接続線更新
             for connection in self.connections:

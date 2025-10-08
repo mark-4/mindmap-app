@@ -76,6 +76,14 @@ class MainWindow(QMainWindow):
             QToolButton:pressed { 
                 background: rgba(200, 200, 200, 150); 
             }
+            QToolButton:checked { 
+                background: rgba(100, 150, 255, 180); 
+                border: 2px solid rgba(50, 100, 200, 200); 
+                color: white; 
+            }
+            QToolButton:checked:hover { 
+                background: rgba(120, 170, 255, 200); 
+            }
         """)
         
         # ビューにフォーカスを設定
