@@ -100,6 +100,13 @@ class MindMapView(QGraphicsView):
             "text_color": "#000000"
         }
         
+        # デバッグモード（デフォルトは無効）
+        self.debug_mode = False
+        
+        # 整理ボタンの実行制御用
+        self._organize_already_executed = False
+        self._last_organize_positions = {}  # 前回整理時のノード位置を記録
+        
         # ピンチジェスチャーを有効化
         self.grabGesture(Qt.GestureType.PinchGesture)
         
@@ -160,6 +167,37 @@ class MindMapView(QGraphicsView):
         # 直線的（線形）サブチェーンのみ水平化するかのフラグ
         self.HORIZONTALIZE_LINEAR_ONLY = True
 
+    def debug_print(self, message: str) -> None:
+        """デバッグモード時のみprintを実行"""
+        if self.debug_mode:
+            print(message)
+    
+    def _has_nodes_moved(self) -> bool:
+        """ノードの位置が変更されているかチェック"""
+        if not hasattr(self, '_last_organize_positions') or not self._last_organize_positions:
+            return True  # 初回は常に移動ありとみなす
+        
+        current_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
+        
+        # ノード数が変わった場合は移動ありとみなす
+        if len(current_nodes) != len(self._last_organize_positions):
+            return True
+        
+        # 各ノードの位置をチェック
+        for node in current_nodes:
+            node_id = id(node)
+            if node_id not in self._last_organize_positions:
+                return True  # 新しいノードが追加された
+            
+            last_pos = self._last_organize_positions[node_id]
+            current_pos = node.pos()
+            
+            # 位置が変更されているかチェック（1px以上の差があれば移動ありとみなす）
+            if abs(current_pos.x() - last_pos.x()) > 1.0 or abs(current_pos.y() - last_pos.y()) > 1.0:
+                return True
+        
+        return False
+
     def align_generations_and_avoid_line_overlap(self) -> None:
         """同世代の左端X整列＋接続線重なり回避の最小オフセット配置を行う。（Undo機能付き）"""
         if self.undo_stack is not None:
@@ -172,17 +210,27 @@ class MindMapView(QGraphicsView):
     def _execute_align_generations(self) -> None:
         """世代整列の実際の処理"""
         try:
-            print("世代整列処理開始")
+            # ノードの位置が変更されているかチェック
+            if hasattr(self, '_organize_already_executed') and self._organize_already_executed:
+                if self._has_nodes_moved():
+                    self.debug_print("ノードが移動されました。整理を実行します。")
+                    # フラグをリセットして整理を実行
+                    self._organize_already_executed = False
+                else:
+                    self.debug_print("ノードの位置に変更がありません。整理をスキップします。")
+                    return
+            
+            self.debug_print("世代整列処理開始")
             all_nodes = [item for item in self.scene.items() if isinstance(item, NodeItem)]
             if not all_nodes:
-                print("ノードが見つかりません")
+                self.debug_print("ノードが見つかりません")
                 return
             
-            print(f"全ノード数: {len(all_nodes)}")
+            self.debug_print(f"全ノード数: {len(all_nodes)}")
             
             # 中心ノード（最も左）
             center_node = min(all_nodes, key=lambda n: n.pos().x())
-            print(f"中心ノード: {center_node.text_item.toPlainText()}")
+            self.debug_print(f"中心ノード: {center_node.text_item.toPlainText()}")
             
             # BFSで世代を分類
             generations: dict[int, list[NodeItem]] = {0: [center_node]}
@@ -199,9 +247,9 @@ class MindMapView(QGraphicsView):
                         visited.add(conn.target)
                         queue.append((conn.target, level+1))
 
-            print(f"世代数: {len(generations)}")
+            self.debug_print(f"世代数: {len(generations)}")
             for level, nodes in generations.items():
-                print(f"  世代{level}: {len(nodes)}個のノード")
+                self.debug_print(f"  世代{level}: {len(nodes)}個のノード")
 
             # 各世代を左端Xで整列（中心テーマはアンカーとして移動しない）
             base_left = center_node.sceneBoundingRect().left()
@@ -238,14 +286,8 @@ class MindMapView(QGraphicsView):
                     except Exception as e:
                         print(f"ノード重なり解消エラー: {e}")
 
-            # サブツリーの接続線を横一列一直線にする処理
-            self._make_connections_horizontal()
-            
-            # 接続線の重なりを解消する処理
-            self._resolve_connection_intersections()
-            
-            # 最終的なノード重なりチェックと解消
-            self._final_node_overlap_resolution()
+            # 基本的な整理のみ実行（重複処理を削除）
+            # 接続線の水平化、交差解消、重なり解消は必要に応じて個別に実行
 
             # 接続線更新
             for connection in self.connections:
@@ -256,7 +298,16 @@ class MindMapView(QGraphicsView):
                     print(f"接続線更新エラー: {e}")
             
             self.scene.update()
-            print("世代整列処理完了")
+            
+            # 1回目の整理完了フラグを設定
+            self._organize_already_executed = True
+            
+            # 整理後のノード位置を記録
+            self._last_organize_positions = {}
+            for node in all_nodes:
+                self._last_organize_positions[id(node)] = node.pos()
+            
+            self.debug_print("世代整列処理完了 - 1回目の整理が完了しました。2回目以降は無効化されます。")
             
         except Exception as e:
             print(f"_execute_align_generations エラー: {e}")
@@ -729,6 +780,10 @@ class MindMapView(QGraphicsView):
 
     def add_node(self, label: str = "ノード", pos: QPointF | None = None, is_parent_node: bool = False) -> NodeItem:
         """ノードを追加"""
+        # 新しいノードが追加された場合の処理（整理フラグのリセットは整理ボタン押下時にチェック）
+        if hasattr(self, '_organize_already_executed'):
+            self.debug_print("新しいノードが追加されました。")
+        
         node = NodeItem(self, label)
         if pos is None:
             if is_parent_node:
@@ -1144,7 +1199,7 @@ class MindMapView(QGraphicsView):
                             self._create_edge(self.pending_source_node, clicked_item)
                     self.pending_source_node.setSelected(False)
                     self.pending_source_node = None
-                    return
+                return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -1304,6 +1359,10 @@ class MindMapView(QGraphicsView):
             print(f"複数ノード移動Undoコマンドをプッシュ: {len(selected_nodes)}個のノード")
             self.undo_stack.push(MoveMultipleNodesCommand(self, selected_nodes, old_positions, new_positions))
             self._is_multi_move_undo_pending = True
+            
+            # ノードが移動された場合の処理（整理フラグのリセットは整理ボタン押下時にチェック）
+            if hasattr(self, '_organize_already_executed'):
+                self.debug_print("ノードが移動されました。")
         elif has_movement:
             print(f"複数ノード移動Undoコマンドをスキップ: has_movement={has_movement}, undo_stack={self.undo_stack is not None}, pending={self._is_multi_move_undo_pending}")
         else:
